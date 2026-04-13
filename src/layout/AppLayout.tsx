@@ -2,7 +2,8 @@ import { useEffect, useMemo } from "react";
 import { Breadcrumb, Layout, Segmented, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MoonOutlined, SunOutlined } from "@ant-design/icons";
-import { appRoutes } from "@/router/route-map";
+import dayjs from "dayjs";
+import { appRoutes, getDefaultRoute, getVisibleRoutes } from "@/router/route-map";
 import { useThemeStore } from "@/store/theme";
 import { useUserStore } from "@/store/user";
 import type { Role } from "@/types/common";
@@ -15,6 +16,33 @@ const roleLabelMap: Record<Role, string> = {
   admin: "管理员"
 };
 
+const roleExperienceMap: Record<
+  Role,
+  { title: string; subtitle: string; badge: string; summary: string; focus: string }
+> = {
+  farmer: {
+    title: "农户作业台",
+    subtitle: "聚焦环境监测、设备控制和农事辅助决策",
+    badge: "农户视图",
+    summary: "当前重点关注环境波动、设备回执与农事建议。",
+    focus: "建议优先查看湿度趋势与视觉告警。"
+  },
+  expert: {
+    title: "专家复核台",
+    subtitle: "聚焦视觉复核、异常研判与远程种植建议",
+    badge: "专家视图",
+    summary: "当前重点关注待复核异常与作物病害研判。",
+    focus: "建议优先处理高优先级病斑任务。"
+  },
+  admin: {
+    title: "农场管理台",
+    subtitle: "聚焦多棚总览、联动策略和设备资产管理",
+    badge: "管理员视图",
+    summary: "当前重点关注策略状态、资产设备和全局告警。",
+    focus: "建议优先处理待接入设备与高等级告警。"
+  }
+};
+
 export const AppLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -22,20 +50,38 @@ export const AppLayout = () => {
   const toggleMode = useThemeStore((state) => state.toggleMode);
   const role = useUserStore((state) => state.role);
   const setRole = useUserStore((state) => state.setRole);
+  const visibleRoutes = useMemo(() => getVisibleRoutes(role), [role]);
+  const defaultRoute = useMemo(() => getDefaultRoute(role), [role]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", mode === "dark");
   }, [mode]);
 
-  const selectedKey = location.pathname === "/403" ? "/" : location.pathname;
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const isAllowed = visibleRoutes.some((route) => route.path === currentPath);
+
+    if (currentPath === "/403") {
+      navigate(defaultRoute, { replace: true });
+      return;
+    }
+
+    if (!isAllowed) {
+      navigate(defaultRoute, { replace: true });
+    }
+  }, [defaultRoute, location.pathname, navigate, visibleRoutes]);
+
+  const selectedKey = location.pathname;
 
   const breadcrumbItems = useMemo(() => {
     const matched = appRoutes.find((item) => item.path === selectedKey);
     return [
-      { title: <Link to="/">智慧温室</Link> },
+      { title: <Link to={defaultRoute}>智慧温室</Link> },
       { title: matched?.label ?? "权限受限" }
     ];
-  }, [selectedKey]);
+  }, [defaultRoute, selectedKey]);
+
+  const roleExperience = roleExperienceMap[role];
 
   return (
     <Layout className="h-screen overflow-hidden bg-transparent">
@@ -56,7 +102,7 @@ export const AppLayout = () => {
           </div>
 
           <nav className="mt-6 flex flex-1 flex-col gap-2">
-            {appRoutes.map((item) => {
+            {visibleRoutes.map((item) => {
               const active = selectedKey === item.path;
               return (
                 <button
@@ -77,9 +123,10 @@ export const AppLayout = () => {
           </nav>
 
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-            <p>实时策略执行率</p>
-            <p className="mt-2 text-3xl font-semibold text-white">96.4%</p>
-            <p className="mt-2 text-xs text-slate-400">视觉告警、IoT 回执与问答服务已接入 Mock 联调链路。</p>
+            <p>{roleExperience.badge}</p>
+            <p className="mt-2 text-xl font-semibold text-white">{dayjs().format("YYYY-MM-DD HH:mm")}</p>
+            <p className="mt-2 text-xs leading-6 text-slate-400">{roleExperience.summary}</p>
+            <p className="mt-2 text-xs leading-6 text-emerald-200/80">{roleExperience.focus}</p>
           </div>
         </div>
       </Sider>
@@ -89,8 +136,10 @@ export const AppLayout = () => {
           <div>
             <Breadcrumb items={breadcrumbItems} />
             <div className="mt-2 flex items-center gap-3">
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">智慧农业态势总览</h2>
-              <Tag color="green">6 座大棚在线</Tag>
+              <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">
+                {roleExperience.title}
+              </h2>
+              <Tag color="green">{roleExperience.subtitle}</Tag>
             </div>
           </div>
 

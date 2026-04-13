@@ -2,11 +2,22 @@ import MockAdapter from "axios-mock-adapter";
 import dayjs from "dayjs";
 import { request } from "@/api/request";
 import type { AgentChatMessage } from "@/api/agent";
-import type { AdminAlertLogItem, AdminDeviceItem } from "@/api/admin";
+import type {
+  AdminAlertLogItem,
+  AdminDeviceItem,
+  AdminDeviceType,
+  CreateManagedDeviceRequest
+} from "@/api/admin";
 import type { DashboardOverview, DashboardTrendItem, GreenhouseSnapshot } from "@/api/dashboard";
 import type { DeviceControlItem } from "@/api/device";
-import type { StrategyLogItem, StrategyRule } from "@/api/strategy";
-import type { VisionAlertItem } from "@/api/vision";
+import type {
+  StrategyLogItem,
+  StrategyRule
+} from "@/api/strategy";
+import type {
+  ExpertReviewTask,
+  VisionAlertItem
+} from "@/api/vision";
 
 const mock = new MockAdapter(request, {
   delayResponse: 700
@@ -17,6 +28,7 @@ let deviceControls: DeviceControlItem[] = [
     id: "light-01",
     name: "补光灯 A-01",
     type: "switch",
+    controlType: "light",
     online: true,
     statusText: "待命中",
     powerOn: true,
@@ -26,6 +38,7 @@ let deviceControls: DeviceControlItem[] = [
     id: "fan-01",
     name: "通风电机 B-07",
     type: "switch",
+    controlType: "fan",
     online: true,
     statusText: "低速巡航",
     powerOn: false,
@@ -35,6 +48,7 @@ let deviceControls: DeviceControlItem[] = [
     id: "temp-01",
     name: "目标温度设定",
     type: "slider",
+    controlType: "thermostat",
     online: true,
     statusText: "自动控制",
     value: 24,
@@ -102,29 +116,59 @@ let visionAlerts: VisionAlertItem[] = [
   }
 ];
 
+let expertReviewTasks: ExpertReviewTask[] = [
+  {
+    id: "review-1",
+    alertId: "alert-2",
+    greenhouseName: "二号黄瓜棚",
+    cropName: "秋黄瓜",
+    issue: "摄像头识别到持续遮挡，建议复核镜头角度",
+    aiSummary: "AI 初步判定画面存在中度遮挡，可能影响病害识别准确率。",
+    disease: "需人工确认",
+    confidence: 76,
+    createdAt: dayjs().subtract(90, "minute").toISOString(),
+    status: "pending",
+    priority: "medium",
+    imageUrl:
+      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'><rect width='800' height='500' rx='36' fill='%230f172a'/><circle cx='260' cy='220' r='120' fill='%2322c55e' fill-opacity='0.35'/><rect x='360' y='120' width='240' height='210' rx='28' fill='%23ffffff' fill-opacity='0.12'/><text x='52' y='72' fill='white' font-size='28' font-family='Segoe UI, Arial'>Expert Review Mock</text></svg>"
+  }
+];
+
 let adminDevices: AdminDeviceItem[] = [
   {
     id: "admin-device-1",
     deviceCode: "SEN-TEMP-001",
+    name: "一号棚温湿度传感器",
+    deviceType: "sensor",
     greenhouseName: "一号番茄棚",
-    type: "温湿度传感器",
-    status: "bound",
+    protocol: "MQTT",
+    status: "online",
+    description: "负责回传温度、湿度与基础环境状态。",
+    capabilities: ["温度采集", "湿度采集", "MQTT 上报"],
     updatedAt: dayjs().subtract(1, "day").toISOString()
   },
   {
     id: "admin-device-2",
     deviceCode: "CTRL-FAN-007",
+    name: "二号棚通风控制器",
+    deviceType: "fan",
     greenhouseName: "二号黄瓜棚",
-    type: "通风控制器",
-    status: "bound",
+    protocol: "MQTT",
+    status: "online",
+    description: "用于排湿降温，可联动策略任务。",
+    capabilities: ["开关控制", "状态回执", "MQTT 下发"],
     updatedAt: dayjs().subtract(6, "hour").toISOString()
   },
   {
     id: "admin-device-3",
     deviceCode: "CAM-LEAF-010",
-    greenhouseName: "未分配",
-    type: "视觉摄像头",
-    status: "unbound",
+    name: "叶片巡检摄像头",
+    deviceType: "camera",
+    greenhouseName: "三号叶菜棚",
+    protocol: "RTSP",
+    status: "offline",
+    description: "用于叶片近景采集与远程巡检。",
+    capabilities: ["视频采集", "RTSP 推流", "异常快照"],
     updatedAt: dayjs().subtract(2, "day").toISOString()
   }
 ];
@@ -195,6 +239,58 @@ const greenhouseSnapshots: GreenhouseSnapshot[] = [
 ];
 
 const createSuccess = <T>(data: T) => [200, { code: 0, message: "success", data }];
+
+const controlTypeMap: Record<
+  Extract<AdminDeviceType, "light" | "fan" | "thermostat">,
+  DeviceControlItem["controlType"]
+> = {
+  light: "light",
+  fan: "fan",
+  thermostat: "thermostat"
+};
+
+const appendControlFromDevice = (device: AdminDeviceItem) => {
+  if (!["light", "fan", "thermostat"].includes(device.deviceType)) {
+    return;
+  }
+
+  const controlExists = deviceControls.some((item) => item.id === device.id);
+  if (controlExists) {
+    return;
+  }
+
+  const nextControl: DeviceControlItem =
+    device.deviceType === "thermostat"
+      ? {
+          id: device.id,
+          name: `${device.name} 目标温度`,
+          type: "slider",
+          controlType: controlTypeMap[device.deviceType],
+          online: device.status === "online",
+          statusText: "新设备待联调",
+          value: 24,
+          min: 16,
+          max: 35,
+          unit: "°C",
+          description: device.description
+        }
+      : {
+          id: device.id,
+          name: device.name,
+          type: "switch",
+          controlType: controlTypeMap[device.deviceType],
+          online: device.status === "online",
+          statusText: "新设备待联调",
+          powerOn: false,
+          description: device.description
+        };
+
+  deviceControls = [...deviceControls, nextControl];
+};
+
+const removeControlFromDevice = (deviceId: string) => {
+  deviceControls = deviceControls.filter((item) => item.id !== deviceId);
+};
 
 export const setupMockAPI = () => {
   mock.onGet("/dashboard/overview").reply(() => createSuccess(dashboardOverview));
@@ -281,14 +377,51 @@ export const setupMockAPI = () => {
     return createSuccess(nextRule);
   });
 
+  mock.onPost("/strategy/toggle").reply((config) => {
+    const payload = JSON.parse(config.data) as { ruleId: string; enabled: boolean };
+    let targetRule: StrategyRule | undefined;
+
+    strategyRules = strategyRules.map((item) => {
+      if (item.id !== payload.ruleId) {
+        return item;
+      }
+
+      targetRule = {
+        ...item,
+        enabled: payload.enabled
+      };
+      return targetRule;
+    });
+
+    if (!targetRule) {
+      return [404, { code: 1, message: "策略不存在", data: null }];
+    }
+
+    strategyLogs = [
+      {
+        id: `log-${Date.now()}`,
+        strategyName: targetRule.name,
+        result: "success",
+        detail: payload.enabled ? "策略已重新启用，恢复自动执行。" : "策略已停用，不再触发自动执行。",
+        executedAt: dayjs().toISOString()
+      },
+      ...strategyLogs
+    ];
+
+    return createSuccess(targetRule);
+  });
+
   mock.onPost("/vision/analyze").reply((config) => {
-    const payload = JSON.parse(config.data) as { imageName: string };
+    const payload = JSON.parse(config.data) as { imageName: string; source?: string };
     return createSuccess({
       imageUrl:
         "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop stop-color='%230f172a'/><stop offset='1' stop-color='%2312b76a'/></linearGradient></defs><rect width='800' height='500' fill='url(%23g)' rx='36'/><circle cx='230' cy='180' r='110' fill='%2322c55e' fill-opacity='0.35'/><circle cx='530' cy='280' r='150' fill='%23f59e0b' fill-opacity='0.18'/><path d='M180 315c84-116 175-162 273-138 58 14 112 53 166 120' stroke='white' stroke-opacity='0.85' stroke-width='20' fill='none' stroke-linecap='round'/><path d='M280 144c-18 64 5 145 60 201' stroke='%23bbf7d0' stroke-width='12' fill='none' stroke-linecap='round'/><text x='60' y='70' fill='white' font-size='28' font-family='Segoe UI, Arial'>AI Leaf Analysis Mock</text></svg>",
       confidence: 93,
       obstruction: false,
       disease: "疑似早期叶斑病",
+      requestId: `vision-${Date.now()}`,
+      source: payload.source ?? "mock",
+      reviewRecommended: true,
       suggestions: [
         `已完成 ${payload.imageName} 的模拟识别`,
         "建议复查叶片背面并结合湿度变化确认病害范围",
@@ -301,13 +434,72 @@ export const setupMockAPI = () => {
 
   mock.onPost("/vision/push-review").reply((config) => {
     const payload = JSON.parse(config.data) as { alertId: string };
+    const sourceAlert = visionAlerts.find((item) => item.id === payload.alertId);
     visionAlerts = visionAlerts.map((item) =>
       item.id === payload.alertId ? { ...item, pushedToExpert: true } : item
     );
+
+    if (sourceAlert && !expertReviewTasks.some((task) => task.alertId === payload.alertId)) {
+      expertReviewTasks = [
+        {
+          id: `review-${Date.now()}`,
+          alertId: sourceAlert.id,
+          greenhouseName: sourceAlert.greenhouseName,
+          cropName: sourceAlert.greenhouseName.includes("番茄") ? "樱桃番茄" : "温室作物",
+          issue: sourceAlert.issue,
+          aiSummary: "AI 检测到疑似异常，已等待专家进一步复核和建议。",
+          disease: sourceAlert.issue.includes("病") ? "疑似病害" : "异常待核验",
+          confidence: 91,
+          createdAt: dayjs().toISOString(),
+          status: "pending",
+          priority: sourceAlert.level,
+          imageUrl:
+            "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='500' viewBox='0 0 800 500'><rect width='800' height='500' rx='36' fill='%23082f1f'/><circle cx='220' cy='200' r='120' fill='%2322c55e' fill-opacity='0.3'/><circle cx='520' cy='280' r='150' fill='%23f59e0b' fill-opacity='0.2'/><text x='48' y='72' fill='white' font-size='28' font-family='Segoe UI, Arial'>Pending Expert Review</text></svg>"
+        },
+        ...expertReviewTasks
+      ];
+    }
+
     return createSuccess({
       success: true,
       alertId: payload.alertId
     });
+  });
+
+  mock.onGet("/vision/expert-review/tasks").reply(() => createSuccess(expertReviewTasks));
+
+  mock.onPost("/vision/expert-review/submit").reply((config) => {
+    const payload = JSON.parse(config.data) as {
+      taskId: string;
+      suggestion: string;
+      conclusion: "confirmed" | "needs_recheck";
+    };
+
+    let updatedTask: ExpertReviewTask | undefined;
+
+    expertReviewTasks = expertReviewTasks.map((item) => {
+      if (item.id !== payload.taskId) {
+        return item;
+      }
+
+      updatedTask = {
+        ...item,
+        status: "reviewed",
+        expertSuggestion: payload.suggestion,
+        reviewedAt: dayjs().toISOString(),
+        aiSummary:
+          payload.conclusion === "confirmed"
+            ? "专家已确认 AI 结果，可按建议执行处置。"
+            : "专家建议补拍近景或重新采样后再判断。"
+      };
+      return updatedTask;
+    });
+
+    if (!updatedTask) {
+      return [404, { code: 1, message: "复核任务不存在", data: null }];
+    }
+
+    return createSuccess(updatedTask);
   });
 
   mock.onPost("/agent/chat").reply((config) => {
@@ -336,36 +528,38 @@ export const setupMockAPI = () => {
     })
   );
 
-  mock.onPost("/admin/device-bind").reply((config) => {
-    const payload = JSON.parse(config.data) as { deviceId: string };
-    adminDevices = adminDevices.map((item) =>
-      item.id === payload.deviceId
-        ? {
-            ...item,
-            status: "bound",
-            greenhouseName: "一号番茄棚",
-            updatedAt: dayjs().toISOString()
-          }
-        : item
-    );
-    return createSuccess({
-      success: true,
-      deviceId: payload.deviceId
-    });
+  mock.onPost("/admin/devices").reply((config) => {
+    const payload = JSON.parse(config.data) as CreateManagedDeviceRequest;
+    const deviceTypeCapabilities: Record<AdminDeviceType, string[]> = {
+      sensor: ["环境采集", "状态上报"],
+      light: ["开关控制", "照明补光"],
+      fan: ["开关控制", "排湿通风"],
+      thermostat: ["温度设定", "策略联动"],
+      camera: ["视频采集", "图像分析"]
+    };
+
+    const nextDevice: AdminDeviceItem = {
+      id: `admin-device-${Date.now()}`,
+      deviceCode: payload.deviceCode,
+      name: payload.name,
+      deviceType: payload.deviceType,
+      greenhouseName: payload.greenhouseName,
+      protocol: payload.protocol,
+      status: "pending",
+      description: payload.description,
+      capabilities: deviceTypeCapabilities[payload.deviceType],
+      updatedAt: dayjs().toISOString()
+    };
+
+    adminDevices = [nextDevice, ...adminDevices];
+    appendControlFromDevice(nextDevice);
+    return createSuccess(nextDevice);
   });
 
-  mock.onPost("/admin/device-unbind").reply((config) => {
+  mock.onPost("/admin/device-delete").reply((config) => {
     const payload = JSON.parse(config.data) as { deviceId: string };
-    adminDevices = adminDevices.map((item) =>
-      item.id === payload.deviceId
-        ? {
-            ...item,
-            status: "unbound",
-            greenhouseName: "未分配",
-            updatedAt: dayjs().toISOString()
-          }
-        : item
-    );
+    adminDevices = adminDevices.filter((item) => item.id !== payload.deviceId);
+    removeControlFromDevice(payload.deviceId);
     return createSuccess({
       success: true,
       deviceId: payload.deviceId

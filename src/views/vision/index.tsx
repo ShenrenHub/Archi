@@ -7,8 +7,8 @@ import {
   Upload,
   message
 } from "antd";
-import type { UploadFile } from "antd/es/upload/interface";
 import { CloudUploadOutlined, SendOutlined } from "@ant-design/icons";
+import { useUserStore } from "@/store/user";
 import {
   analyzeCropImage,
   fetchVisionAlerts,
@@ -17,11 +17,13 @@ import {
 import type { VisionAlertItem, VisionAnalyzeResponse } from "@/api/vision";
 import { AppCard } from "@/components/common/AppCard";
 import { CameraPlayer } from "@/components/vision/CameraPlayer";
+import { fileToBase64 } from "@/utils/file";
 import { formatDateTime } from "@/utils/time";
 
 export default function VisionPage() {
+  const role = useUserStore((state) => state.role);
   const [alerts, setAlerts] = useState<VisionAlertItem[]>([]);
-  const [selectedFile, setSelectedFile] = useState<UploadFile | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [analysis, setAnalysis] = useState<VisionAnalyzeResponse | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -61,8 +63,11 @@ export default function VisionPage() {
     });
 
     try {
+      const base64 = await fileToBase64(selectedFile);
       const result = await analyzeCropImage({
-        imageName: selectedFile.name
+        imageName: selectedFile.name,
+        imageBase64: base64,
+        source: "mock"
       });
       setAnalysis(result);
       message.success({
@@ -114,7 +119,9 @@ export default function VisionPage() {
             <div className="rounded-[24px] border border-dashed border-brand-500/30 bg-brand-50/60 p-8 text-center dark:bg-white/5">
               <CloudUploadOutlined className="text-3xl text-brand-600" />
               <p className="mt-4 text-base font-medium text-slate-900 dark:text-white">上传叶片图片进行健康检测</p>
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">支持 JPG / PNG，返回遮挡、病变与处理建议</p>
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
+                支持 JPG / PNG，前端会先转为 base64 文本，便于后续直连 SmartJavaAI。
+              </p>
             </div>
           </Upload>
 
@@ -135,6 +142,11 @@ export default function VisionPage() {
               />
             </div>
           ) : null}
+
+          <div className="mt-5 rounded-[24px] border border-dashed border-sky-500/25 bg-sky-500/5 p-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+            已预留 SmartJavaAI 接口调用契约：图片通过 base64 文本上传，后端返回结构化病变、遮挡和建议字段。真实服务可直接接入
+            `submitSmartJavaAiAnalysis`。
+          </div>
         </AppCard>
       </div>
 
@@ -146,6 +158,9 @@ export default function VisionPage() {
                 <p className="text-sm text-slate-300">识别结论</p>
                 <h3 className="mt-3 text-2xl font-semibold">{analysis.disease}</h3>
                 <p className="mt-3 text-sm text-slate-300">模型置信度 {analysis.confidence}%</p>
+                <p className="mt-2 text-xs text-slate-400">
+                  请求编号 {analysis.requestId ?? "mock-local"} / 来源 {analysis.source ?? "mock"}
+                </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -182,38 +197,48 @@ export default function VisionPage() {
           )}
         </AppCard>
 
-        <AppCard title="异常告警通知">
-          <List
-            dataSource={alerts}
-            renderItem={(item) => (
-              <List.Item className="!px-0">
-                <div className="w-full rounded-[24px] border border-white/10 bg-white/60 p-4 dark:bg-white/5">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <h4 className="text-base font-semibold text-slate-900 dark:text-white">{item.greenhouseName}</h4>
-                        <Tag color={levelColorMap[item.level]}>
-                          {item.level === "high" ? "高危" : item.level === "medium" ? "中危" : "低危"}
-                        </Tag>
+        <div className="space-y-4">
+          <AppCard title="异常告警通知">
+            <List
+              dataSource={alerts}
+              renderItem={(item) => (
+                <List.Item className="!px-0">
+                  <div className="w-full rounded-[24px] border border-white/10 bg-white/60 p-4 dark:bg-white/5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-base font-semibold text-slate-900 dark:text-white">{item.greenhouseName}</h4>
+                          <Tag color={levelColorMap[item.level]}>
+                            {item.level === "high" ? "高危" : item.level === "medium" ? "中危" : "低危"}
+                          </Tag>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.issue}</p>
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatDateTime(item.createdAt)}</p>
                       </div>
-                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.issue}</p>
-                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatDateTime(item.createdAt)}</p>
+                      <Button
+                        type={item.pushedToExpert ? "default" : "primary"}
+                        icon={<SendOutlined />}
+                        disabled={item.pushedToExpert}
+                        loading={Boolean(reviewLoading[item.id])}
+                        onClick={() => void handlePushReview(item)}
+                      >
+                        {item.pushedToExpert ? "已推送" : "推送专家复核"}
+                      </Button>
                     </div>
-                    <Button
-                      type={item.pushedToExpert ? "default" : "primary"}
-                      icon={<SendOutlined />}
-                      disabled={item.pushedToExpert}
-                      loading={Boolean(reviewLoading[item.id])}
-                      onClick={() => void handlePushReview(item)}
-                    >
-                      {item.pushedToExpert ? "已推送" : "推送专家复核"}
-                    </Button>
                   </div>
-                </div>
-              </List.Item>
-            )}
-          />
-        </AppCard>
+                </List.Item>
+              )}
+            />
+          </AppCard>
+
+          <AppCard title="复核流转说明">
+            <div className="space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              <p>1. 农户或管理员在此处推送异常后，任务会进入“专家复核”页面。</p>
+              <p>2. 专家角色可在侧边栏进入“专家复核”，查看待办、确认 AI 结果或要求补拍复查。</p>
+              <p>3. 当前角色：{role === "expert" ? "农业专家，可直接进入复核页面处理任务。" : "非专家，可在推送后切换到专家视图体验完整流程。"}</p>
+            </div>
+          </AppCard>
+        </div>
       </div>
     </div>
   );

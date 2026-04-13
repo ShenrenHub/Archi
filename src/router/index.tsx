@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Result } from "antd";
 import { useUserStore } from "@/store/user";
-import { appRoutes } from "@/router/route-map";
+import { appRoutes, getDefaultRoute } from "@/router/route-map";
 import { AppLayout } from "@/layout/AppLayout";
 import type { Role } from "@/types/common";
 
@@ -35,9 +35,15 @@ const ForbiddenPage = () => {
   );
 };
 
+const RoleHomeRedirect = () => {
+  const role = useUserStore((state) => state.role);
+  return <Navigate to={getDefaultRoute(role)} replace />;
+};
+
 export const AppRouter = () => (
   <Routes>
     <Route element={<AppLayout />}>
+      <Route path="/" element={<RoleHomeRedirect />} />
       {appRoutes.map((route) => (
         <Route
           key={route.path}
@@ -47,6 +53,6 @@ export const AppRouter = () => (
       ))}
       <Route path="/403" element={<ForbiddenPage />} />
     </Route>
-    <Route path="*" element={<Navigate to="/" replace />} />
+    <Route path="*" element={<RoleHomeRedirect />} />
   </Routes>
 );

@@ -6,12 +6,17 @@ import {
   InputNumber,
   message,
   Select,
+  Switch,
   Table,
   Tag,
   TimePicker
 } from "antd";
 import type { Dayjs } from "dayjs";
-import { createStrategyRule, fetchStrategyOverview } from "@/api/strategy";
+import {
+  createStrategyRule,
+  fetchStrategyOverview,
+  toggleStrategyRule
+} from "@/api/strategy";
 import type { StrategyLogItem, StrategyRule } from "@/api/strategy";
 import { AppCard } from "@/components/common/AppCard";
 import { formatDateTime } from "@/utils/time";
@@ -29,6 +34,7 @@ export default function StrategyPage() {
   const [rules, setRules] = useState<StrategyRule[]>([]);
   const [logs, setLogs] = useState<StrategyLogItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [toggleLoadingMap, setToggleLoadingMap] = useState<Record<string, boolean>>({});
 
   const loadOverview = async () => {
     const response = await fetchStrategyOverview();
@@ -55,6 +61,23 @@ export default function StrategyPage() {
       form.resetFields();
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleRule = async (rule: StrategyRule, enabled: boolean) => {
+    setToggleLoadingMap((current) => ({ ...current, [rule.id]: true }));
+    try {
+      const nextRule = await toggleStrategyRule({
+        ruleId: rule.id,
+        enabled
+      });
+      setRules((current) =>
+        current.map((item) => (item.id === nextRule.id ? nextRule : item))
+      );
+      await loadOverview();
+      message.success(enabled ? "策略已启用" : "策略已停用");
+    } finally {
+      setToggleLoadingMap((current) => ({ ...current, [rule.id]: false }));
     }
   };
 
@@ -129,6 +152,18 @@ export default function StrategyPage() {
                   <Tag color={record.enabled ? "green" : "default"}>
                     {record.enabled ? "启用中" : "已停用"}
                   </Tag>
+                )
+              },
+              {
+                title: "操作",
+                render: (_, record) => (
+                  <Switch
+                    checked={record.enabled}
+                    loading={Boolean(toggleLoadingMap[record.id])}
+                    checkedChildren="启用"
+                    unCheckedChildren="停用"
+                    onChange={(checked) => void handleToggleRule(record, checked)}
+                  />
                 )
               }
             ]}

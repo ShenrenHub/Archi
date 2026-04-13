@@ -26,6 +26,11 @@ export interface StrategyCreateRequest {
   action: string;
 }
 
+export interface ToggleStrategyRequest {
+  ruleId: string;
+  enabled: boolean;
+}
+
 export interface StrategyListResponse {
   rules: StrategyRule[];
   logs: StrategyLogItem[];
@@ -44,3 +49,10 @@ export const fetchStrategyOverview = () =>
  */
 export const createStrategyRule = (payload: StrategyCreateRequest) =>
   request.post<StrategyCreateRequest, StrategyRule>("/strategy/rules", payload);
+
+/**
+ * 业务场景 3:
+ * 停用或启用联动策略。常用于任务列表中的即时状态切换，并要求同步追加执行日志。
+ */
+export const toggleStrategyRule = (payload: ToggleStrategyRequest) =>
+  request.post<ToggleStrategyRequest, StrategyRule>("/strategy/toggle", payload);

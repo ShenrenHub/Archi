@@ -4,6 +4,7 @@ export interface DeviceControlItem {
   id: string;
   name: string;
   type: "switch" | "slider";
+  controlType?: "light" | "fan" | "thermostat";
   online: boolean;
   statusText: string;
   powerOn?: boolean;

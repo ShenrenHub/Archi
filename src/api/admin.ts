@@ -1,11 +1,22 @@
 import { request } from "@/api/request";
 
+export type AdminDeviceType =
+  | "sensor"
+  | "light"
+  | "fan"
+  | "thermostat"
+  | "camera";
+
 export interface AdminDeviceItem {
   id: string;
   deviceCode: string;
+  name: string;
+  deviceType: AdminDeviceType;
   greenhouseName: string;
-  type: string;
-  status: "bound" | "unbound";
+  protocol: "MQTT" | "RTSP" | "HTTP";
+  status: "online" | "offline" | "pending";
+  description: string;
+  capabilities: string[];
   updatedAt: string;
 }
 
@@ -17,7 +28,16 @@ export interface AdminAlertLogItem {
   createdAt: string;
 }
 
-export interface DeviceBindingRequest {
+export interface CreateManagedDeviceRequest {
+  deviceCode: string;
+  name: string;
+  deviceType: AdminDeviceType;
+  greenhouseName: string;
+  protocol: "MQTT" | "RTSP" | "HTTP";
+  description: string;
+}
+
+export interface DeleteManagedDeviceRequest {
   deviceId: string;
 }
 
@@ -28,27 +48,27 @@ export interface AdminOverviewResponse {
 
 /**
  * 业务场景 6:
- * 获取设备绑定清单与系统全量告警日志。
+ * 获取设备管理清单与系统全量告警日志，用于“增减设备 + 告警追溯”页面初始化。
  */
 export const fetchAdminOverview = () =>
   request.get<never, AdminOverviewResponse>("/admin/overview");
 
 /**
  * 业务场景 6:
- * 执行设备绑定操作。
+ * 新增设备。添加成功后，系统需动态调整设备资产清单，必要时同步加入控制中心。
  */
-export const bindDevice = (payload: DeviceBindingRequest) =>
-  request.post<DeviceBindingRequest, { success: boolean; deviceId: string }>(
-    "/admin/device-bind",
+export const createManagedDevice = (payload: CreateManagedDeviceRequest) =>
+  request.post<CreateManagedDeviceRequest, AdminDeviceItem>(
+    "/admin/devices",
     payload
   );
 
 /**
  * 业务场景 6:
- * 执行设备解绑操作。
+ * 删除设备。删除成功后，系统需同步移除相关资产状态与控制入口。
  */
-export const unbindDevice = (payload: DeviceBindingRequest) =>
-  request.post<DeviceBindingRequest, { success: boolean; deviceId: string }>(
-    "/admin/device-unbind",
+export const deleteManagedDevice = (payload: DeleteManagedDeviceRequest) =>
+  request.post<DeleteManagedDeviceRequest, { success: boolean; deviceId: string }>(
+    "/admin/device-delete",
     payload
   );

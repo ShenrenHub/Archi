@@ -179,25 +179,27 @@ export default function DeviceControlPage() {
           </div>
         </AppCard>
 
-        <AppCard title="最近控制记录">
+        <AppCard title="最近控制记录" className="flex h-full min-h-0 flex-col">
           {actionHistory.length === 0 ? (
             <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-slate-500 dark:text-slate-300">
               暂无操作记录，试试切换设备状态。
             </div>
           ) : (
-            <List
-              dataSource={actionHistory}
-              renderItem={(item) => (
-                <List.Item className="!px-0">
-                  <div className="w-full rounded-2xl bg-white/60 p-4 dark:bg-white/5">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="font-medium text-slate-900 dark:text-white">{item.label}</span>
-                      <Tag color={item.status === "success" ? "green" : "gold"}>{item.timestamp}</Tag>
+            <div className="max-h-[280px] overflow-y-auto pr-1">
+              <List
+                dataSource={actionHistory}
+                renderItem={(item) => (
+                  <List.Item className="!px-0">
+                    <div className="w-full rounded-2xl bg-white/60 p-4 dark:bg-white/5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-medium text-slate-900 dark:text-white">{item.label}</span>
+                        <Tag color={item.status === "success" ? "green" : "gold"}>{item.timestamp}</Tag>
+                      </div>
                     </div>
-                  </div>
-                </List.Item>
-              )}
-            />
+                  </List.Item>
+                )}
+              />
+            </div>
           )}
         </AppCard>
       </div>
@@ -216,7 +218,7 @@ export default function DeviceControlPage() {
                     <div>
                       <div className="flex items-center gap-3">
                         <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 p-3 text-white">
-                          {device.id.includes("light") ? <BulbOutlined /> : <FireOutlined />}
+                          {device.controlType === "light" ? <BulbOutlined /> : <FireOutlined />}
                         </div>
                         <div>
                           <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{device.name}</h4>
