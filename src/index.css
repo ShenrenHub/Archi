@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(18, 183, 106, 0.22), transparent 28%),
+    radial-gradient(circle at right center, rgba(31, 182, 255, 0.18), transparent 24%),
+    linear-gradient(180deg, #f3f8f5 0%, #edf6ff 55%, #eef4f1 100%);
+  color: #0f172a;
+}
+
+.dark body {
+  color-scheme: dark;
+  background:
+    radial-gradient(circle at top left, rgba(18, 183, 106, 0.18), transparent 24%),
+    radial-gradient(circle at right center, rgba(245, 158, 11, 0.1), transparent 18%),
+    linear-gradient(180deg, #08110d 0%, #091923 50%, #08131b 100%);
+  color: #e2e8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+.markdown-body :where(h1, h2, h3, h4) {
+  margin-top: 0;
+}
