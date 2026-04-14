@@ -162,11 +162,11 @@ export default function DeviceControlPage() {
           <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
             <div>
               <h3 className="text-3xl font-semibold text-slate-900 dark:text-white">
-                MQTT 设备联控面板
+                温室设备控制面板
               </h3>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+              {/* <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 dark:text-slate-300">
                 用于模拟补光灯、通风电机与温控器的远程控制。指令发送后会等待 Mock 后端回执，再更新 UI 状态，并产生清晰的 Toast 反馈。
-              </p>
+              </p> */}
               <div className="mt-5">
                 <MqttStatusLight state={state} latency={latency} />
               </div>
@@ -174,7 +174,7 @@ export default function DeviceControlPage() {
             <div className="rounded-[28px] bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white">
               <p className="text-sm text-slate-300">控制链路</p>
               <h4 className="mt-3 text-4xl font-semibold">稳定</h4>
-              <p className="mt-3 text-sm text-slate-300">设备回执与策略执行结果统一收敛到控制中心。</p>
+              <p className="mt-3 text-sm text-slate-300">当前设备状态稳定，可按需进行远程调节。</p>
             </div>
           </div>
         </AppCard>
@@ -273,9 +273,9 @@ export default function DeviceControlPage() {
                 <Button onClick={() => setDraftTemp(sliderControl.value ?? 24)}>恢复当前值</Button>
               </div>
 
-              <div className="rounded-[24px] border border-dashed border-emerald-500/30 bg-emerald-500/5 p-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
+              {/* <div className="rounded-[24px] border border-dashed border-emerald-500/30 bg-emerald-500/5 p-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
                 提交按钮已做防抖，连续点击会合并为一次有效下发，适合对接真实 MQTT 指令链路。
-              </div>
+              </div> */}
             </div>
           ) : (
             <div className="flex min-h-[280px] items-center justify-center">

@@ -4,6 +4,7 @@ import {
   AppstoreOutlined,
   BulbOutlined,
   CameraOutlined,
+  CloudUploadOutlined,
   ControlOutlined,
   EyeOutlined,
   RobotOutlined,
@@ -14,6 +15,7 @@ import DashboardPage from "@/views/dashboard";
 import DeviceControlPage from "@/views/device-control";
 import StrategyPage from "@/views/strategy";
 import VisionPage from "@/views/vision";
+import VisionAnalysisPage from "@/views/vision-analysis";
 import AgentPage from "@/views/agent";
 import AdminPage from "@/views/admin";
 import ExpertReviewPage from "@/views/expert-review";
@@ -50,10 +52,17 @@ export const appRoutes: AppRouteItem[] = [
   },
   {
     path: "/vision",
-    label: "AI 视觉分析",
+    label: "视觉监测告警",
     icon: <CameraOutlined />,
     roles: ["farmer", "expert", "admin"],
     element: <VisionPage />
+  },
+  {
+    path: "/vision-analysis",
+    label: "图片健康检测",
+    icon: <CloudUploadOutlined />,
+    roles: ["farmer", "expert", "admin"],
+    element: <VisionAnalysisPage />
   },
   {
     path: "/expert-review",

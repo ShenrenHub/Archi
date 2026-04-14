@@ -178,7 +178,7 @@ export default function DashboardPage() {
       <div className="grid min-h-0 gap-4 xl:grid-cols-[1.6fr_1fr]">
         <AppCard
           title="过去 7 天环境趋势"
-          extra={<Tag color="green">ECharts 实时联调</Tag>}
+          extra={<Tag color="green">数据持续更新</Tag>}
           className="min-h-0 overflow-hidden"
         >
           <ReactECharts option={chartOption} style={{ height: 280 }} />
@@ -230,7 +230,7 @@ export default function DashboardPage() {
           <div className="rounded-[24px] bg-gradient-to-br from-sky-500 to-accent-600 p-5 text-white">
             <CloudServerOutlined className="text-xl" />
             <h4 className="mt-3 text-xl font-semibold">设备在线率较高</h4>
-            <p className="mt-2 text-sm text-sky-50">IoT 控制链路健康，可继续进行远程调度。</p>
+            <p className="mt-2 text-sm text-sky-50">设备运行状态稳定，可继续进行远程调度。</p>
           </div>
           <div className="rounded-[24px] bg-gradient-to-br from-amber-500 to-harvest-600 p-5 text-white">
             <AlertOutlined className="text-xl" />

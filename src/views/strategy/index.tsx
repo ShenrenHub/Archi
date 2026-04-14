@@ -82,57 +82,60 @@ export default function StrategyPage() {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_1.1fr]">
-      <AppCard title="新建联动策略">
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={(values) => void handleSubmit(values)}
-          initialValues={{
-            lowLight: 1600,
-            highHumidity: 78,
-            action: "开启通风电机"
-          }}
-        >
-          <Form.Item label="策略名称" name="name" rules={[{ required: true, message: "请输入策略名称" }]}>
-            <Input placeholder="例如：夜间高湿排风" />
-          </Form.Item>
-
-          <Form.Item label="时间区间" name="timeRange" rules={[{ required: true, message: "请选择时间区间" }]}>
-            <TimePicker.RangePicker format="HH:mm" className="w-full" />
-          </Form.Item>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Form.Item label="低光照阈值" name="lowLight" rules={[{ required: true }]}>
-              <InputNumber className="!w-full" addonAfter="Lux" min={500} max={5000} />
+    <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[1fr_1.1fr]">
+      <AppCard title="新建联动策略" className="min-h-0 overflow-hidden">
+        <div className="h-full overflow-y-auto pr-1">
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={(values) => void handleSubmit(values)}
+            initialValues={{
+              lowLight: 1600,
+              highHumidity: 78,
+              action: "开启通风电机"
+            }}
+          >
+            <Form.Item label="策略名称" name="name" rules={[{ required: true, message: "请输入策略名称" }]}>
+              <Input placeholder="例如：夜间高湿排风" />
             </Form.Item>
-            <Form.Item label="高湿度阈值" name="highHumidity" rules={[{ required: true }]}>
-              <InputNumber className="!w-full" addonAfter="%" min={40} max={95} />
+
+            <Form.Item label="时间区间" name="timeRange" rules={[{ required: true, message: "请选择时间区间" }]}>
+              <TimePicker.RangePicker format="HH:mm" className="w-full" />
             </Form.Item>
-          </div>
 
-          <Form.Item label="触发动作" name="action" rules={[{ required: true, message: "请选择动作" }]}>
-            <Select
-              options={[
-                { label: "开启通风电机", value: "开启通风电机" },
-                { label: "开启补光灯", value: "开启补光灯" },
-                { label: "发送专家预警", value: "发送专家预警" }
-              ]}
-            />
-          </Form.Item>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Form.Item label="低光照阈值" name="lowLight" rules={[{ required: true }]}>
+                <InputNumber className="!w-full" addonAfter="Lux" min={500} max={5000} />
+              </Form.Item>
+              <Form.Item label="高湿度阈值" name="highHumidity" rules={[{ required: true }]}>
+                <InputNumber className="!w-full" addonAfter="%" min={40} max={95} />
+              </Form.Item>
+            </div>
 
-          <Button type="primary" htmlType="submit" loading={submitting}>
-            保存并启用策略
-          </Button>
-        </Form>
+            <Form.Item label="触发动作" name="action" rules={[{ required: true, message: "请选择动作" }]}>
+              <Select
+                options={[
+                  { label: "开启通风电机", value: "开启通风电机" },
+                  { label: "开启补光灯", value: "开启补光灯" },
+                  { label: "发送专家预警", value: "发送专家预警" }
+                ]}
+              />
+            </Form.Item>
+
+            <Button type="primary" htmlType="submit" loading={submitting}>
+              保存并启用策略
+            </Button>
+          </Form>
+        </div>
       </AppCard>
 
-      <div className="space-y-4">
-        <AppCard title="策略任务列表">
+      <div className="grid min-h-0 gap-4 xl:grid-rows-[minmax(0,38vh)_minmax(0,1fr)]">
+        <AppCard title="策略任务列表" className="min-h-0 max-h-[38vh] overflow-hidden">
           <Table
             rowKey="id"
             pagination={false}
             dataSource={rules}
+            scroll={{ y: 220 }}
             columns={[
               {
                 title: "规则名",
@@ -170,11 +173,12 @@ export default function StrategyPage() {
           />
         </AppCard>
 
-        <AppCard title="执行日志">
+        <AppCard title="执行日志" className="min-h-0 overflow-hidden">
           <Table
             rowKey="id"
             pagination={false}
             dataSource={logs}
+            scroll={{ y: 420 }}
             columns={[
               {
                 title: "策略",
