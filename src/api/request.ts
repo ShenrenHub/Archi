@@ -1,10 +1,12 @@
-import axios from "axios";
+import axios, { type AxiosResponse } from "axios";
 import { message } from "antd";
 import { useUserStore } from "@/store/user";
 import type { ApiResponse } from "@/types/common";
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api";
+
 export const request = axios.create({
-  baseURL: "/api",
+  baseURL: apiBaseUrl,
   timeout: 8000
 });
 
@@ -20,7 +22,7 @@ request.interceptors.request.use((config) => {
 });
 
 request.interceptors.response.use(
-  (response) => {
+  ((response: AxiosResponse) => {
     const payload = response.data as ApiResponse<unknown>;
 
     if (payload.code !== 0) {
@@ -29,7 +31,7 @@ request.interceptors.response.use(
     }
 
     return payload.data;
-  },
+  }) as never,
   (error) => {
     const serverMessage =
       error?.response?.data?.message || error?.message || "网络异常，请检查连接";
