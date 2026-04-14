@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Breadcrumb, Button, Drawer, Segmented, Switch, Tag } from "antd";
+import { Breadcrumb, Button, Drawer, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -170,16 +170,25 @@ export const AppLayout = () => {
             </div>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:mt-0 lg:justify-end">
-              <Segmented<Role>
-                block
-                options={[
-                  { label: roleLabelMap.farmer, value: "farmer" },
-                  { label: roleLabelMap.expert, value: "expert" },
-                  { label: roleLabelMap.admin, value: "admin" }
-                ]}
-                value={role}
-                onChange={(value) => setRole(value as Role)}
-              />
+              <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:min-w-[400px]">
+                {(["farmer", "expert", "admin"] as Role[]).map((item) => {
+                  const active = role === item;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setRole(item)}
+                      className={`rounded-2xl border px-4 py-2.5 text-center text-sm font-medium transition ${
+                        active
+                          ? "border-emerald-400/50 bg-emerald-500 text-white shadow-sm dark:border-emerald-300/40 dark:bg-emerald-400 dark:text-slate-950"
+                          : "border-slate-200/80 bg-white/55 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-950/88 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900"
+                      }`}
+                    >
+                      <span className="whitespace-nowrap">{roleLabelMap[item]}</span>
+                    </button>
+                  );
+                })}
+              </div>
               <Switch
                 checked={mode === "dark"}
                 checkedChildren={<MoonOutlined />}

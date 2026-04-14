@@ -16,7 +16,13 @@ export const AppCard = ({ title, extra, className, children }: AppCardProps) => 
   >
     {(title || extra) && (
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {title ? <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h3> : <span />}
+        {title ? (
+          <h3 className="text-base font-semibold tracking-[0.01em] text-slate-950 dark:!text-slate-50">
+            {title}
+          </h3>
+        ) : (
+          <span />
+        )}
         {extra}
       </div>
     )}
