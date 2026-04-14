@@ -65,9 +65,9 @@ export default function ExpertReviewPage() {
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[0.86fr_1.14fr]">
-      <AppCard title="待复核任务" className="min-h-0 overflow-hidden">
-        <div className="h-full overflow-y-auto pr-1">
+    <div className="grid gap-4 lg:h-full lg:min-h-0 xl:grid-cols-[0.86fr_1.14fr]">
+      <AppCard title="待复核任务" className="lg:min-h-0 lg:overflow-hidden">
+        <div className="lg:h-full lg:overflow-y-auto lg:pr-1">
           <List
             dataSource={tasks}
             renderItem={(item) => (
@@ -112,9 +112,9 @@ export default function ExpertReviewPage() {
         </div>
       </AppCard>
 
-      <AppCard title="专家复核工作台" className="min-h-0 overflow-hidden">
+      <AppCard title="专家复核工作台" className="lg:min-h-0 lg:overflow-hidden">
         {selectedTask ? (
-          <div className="grid h-full min-h-0 gap-4 xl:grid-rows-[auto_auto_minmax(0,1fr)]">
+          <div className="grid gap-4 lg:h-full lg:min-h-0 xl:grid-rows-[auto_auto_minmax(0,1fr)]">
             <div className="grid gap-4 md:grid-cols-[1.1fr_0.9fr]">
               <div className="rounded-[24px] bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white">
                 <p className="text-sm text-slate-300">AI 初判</p>
@@ -198,3 +198,4 @@ export default function ExpertReviewPage() {
     </div>
   );
 }
+

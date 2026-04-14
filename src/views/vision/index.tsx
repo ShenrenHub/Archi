@@ -1,19 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Image,
-  List,
-  Tag,
-  Upload,
-  message
-} from "antd";
+import { Button, Image, List, Tag, Upload, message } from "antd";
 import { CloudUploadOutlined, SendOutlined } from "@ant-design/icons";
 import { useUserStore } from "@/store/user";
-import {
-  analyzeCropImage,
-  fetchVisionAlerts,
-  pushAlertToExpert
-} from "@/api/vision";
+import { analyzeCropImage, fetchVisionAlerts, pushAlertToExpert } from "@/api/vision";
 import type { VisionAlertItem, VisionAnalyzeResponse } from "@/api/vision";
 import { AppCard } from "@/components/common/AppCard";
 import { CameraPlayer } from "@/components/vision/CameraPlayer";
@@ -86,9 +75,7 @@ export default function VisionPage() {
         alertId: alert.id
       });
       setAlerts((current) =>
-        current.map((item) =>
-          item.id === alert.id ? { ...item, pushedToExpert: true } : item
-        )
+        current.map((item) => (item.id === alert.id ? { ...item, pushedToExpert: true } : item))
       );
       message.success("已推送专家复核");
     } finally {
@@ -116,8 +103,8 @@ export default function VisionPage() {
               setAnalysis(null);
             }}
           >
-            <div className="rounded-[24px] border border-dashed border-brand-500/30 bg-brand-50/60 p-8 text-center dark:bg-white/5">
-              <CloudUploadOutlined className="text-3xl text-brand-600" />
+            <div className="rounded-[24px] border border-dashed border-brand-500/30 bg-brand-50/60 p-6 text-center dark:bg-white/5 sm:p-8">
+              <CloudUploadOutlined className="text-3xl text-brand-600 dark:text-emerald-300" />
               <p className="mt-4 text-base font-medium text-slate-900 dark:text-white">上传叶片图片进行健康检测</p>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-300">
                 支持 JPG / PNG，前端会先转为 base64 文本，便于后续直连 SmartJavaAI。
@@ -125,7 +112,7 @@ export default function VisionPage() {
             </div>
           </Upload>
 
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             <Button type="primary" loading={analyzing} onClick={() => void handleAnalyze()}>
               开始分析
             </Button>
@@ -154,7 +141,7 @@ export default function VisionPage() {
         <AppCard title="健康检测结果">
           {analysis ? (
             <div className="space-y-4">
-              <div className="rounded-[24px] bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white">
+              <div className="rounded-[24px] bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white dark:from-slate-950 dark:to-slate-800">
                 <p className="text-sm text-slate-300">识别结论</p>
                 <h3 className="mt-3 text-2xl font-semibold">{analysis.disease}</h3>
                 <p className="mt-3 text-sm text-slate-300">模型置信度 {analysis.confidence}%</p>
@@ -191,7 +178,7 @@ export default function VisionPage() {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[340px] items-center justify-center rounded-[24px] bg-white/40 text-sm text-slate-500 dark:bg-white/5 dark:text-slate-300">
+            <div className="flex min-h-[280px] items-center justify-center rounded-[24px] bg-white/40 px-6 text-center text-sm text-slate-500 dark:bg-white/5 dark:text-slate-300 sm:min-h-[340px]">
               上传叶片图片后，这里会展示分析结果。
             </div>
           )}
@@ -203,10 +190,10 @@ export default function VisionPage() {
               dataSource={alerts}
               renderItem={(item) => (
                 <List.Item className="!px-0">
-                  <div className="w-full rounded-[24px] border border-white/10 bg-white/60 p-4 dark:bg-white/5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="w-full rounded-[24px] border border-slate-200/70 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <h4 className="text-base font-semibold text-slate-900 dark:text-white">{item.greenhouseName}</h4>
                           <Tag color={levelColorMap[item.level]}>
                             {item.level === "high" ? "高危" : item.level === "medium" ? "中危" : "低危"}
@@ -235,7 +222,12 @@ export default function VisionPage() {
             <div className="space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
               <p>1. 农户或管理员在此处推送异常后，任务会进入“专家复核”页面。</p>
               <p>2. 专家角色可在侧边栏进入“专家复核”，查看待办、确认 AI 结果或要求补拍复查。</p>
-              <p>3. 当前角色：{role === "expert" ? "农业专家，可直接进入复核页面处理任务。" : "非专家，可在推送后切换到专家视图体验完整流程。"}</p>
+              <p>
+                3. 当前角色：
+                {role === "expert"
+                  ? "农业专家，可直接进入复核页面处理任务。"
+                  : "非专家，可在推送后切换到专家视图体验完整流程。"}
+              </p>
             </div>
           </AppCard>
         </div>

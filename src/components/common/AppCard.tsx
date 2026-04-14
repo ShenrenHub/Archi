@@ -10,12 +10,12 @@ interface AppCardProps extends PropsWithChildren {
 export const AppCard = ({ title, extra, className, children }: AppCardProps) => (
   <section
     className={clsx(
-      "rounded-[28px] border border-white/10 bg-white/70 p-5 shadow-panel backdrop-blur-xl transition dark:border-white/5 dark:bg-slate-900/60",
+      "rounded-[28px] border border-slate-200/70 bg-white/78 p-4 shadow-panel backdrop-blur-xl transition dark:border-white/8 dark:bg-slate-950/72 sm:p-5 lg:p-6",
       className
     )}
   >
     {(title || extra) && (
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {title ? <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h3> : <span />}
         {extra}
       </div>

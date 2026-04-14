@@ -80,7 +80,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden">
+    <div className="grid gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)] lg:overflow-hidden">
       <AppCard
         title="设备管理控制台"
         extra={
@@ -106,8 +106,8 @@ export default function AdminPage() {
       </AppCard>
 
       <div className="grid min-h-0 gap-4 xl:grid-cols-[1.4fr_0.95fr]">
-        <AppCard title="设备资产卡片视图" className="min-h-0 overflow-hidden">
-          <div className="grid h-full min-h-0 grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 overflow-y-auto pr-1">
+        <AppCard title="设备资产卡片视图" className="lg:min-h-0 lg:overflow-hidden">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {devices.map((record) => (
               <div
                 key={record.id}
@@ -183,7 +183,7 @@ export default function AdminPage() {
           </div>
         </AppCard>
 
-        <AppCard title="系统全量告警日志" className="min-h-0 overflow-hidden">
+        <AppCard title="系统全量告警日志" className="lg:min-h-0 lg:overflow-hidden">
           <Table
             rowKey="id"
             dataSource={alertLogs}
@@ -272,3 +272,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
