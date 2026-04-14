@@ -89,7 +89,7 @@ export default function AgentPage() {
                 </Tag>
               ))
             ) : (
-              <span className="text-sm text-slate-500 dark:text-slate-300">发送问题后展示 RAG 检索片段。</span>
+              <span className="text-sm text-slate-500 dark:text-slate-300">发送问题后，这里会显示参考信息。</span>
             )}
           </div>
         </AppCard>

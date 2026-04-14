@@ -60,6 +60,11 @@ export default function AdminPage() {
     camera: "摄像头"
   };
 
+  const alertSourceLabelMap: Record<string, string> = {
+    "视觉告警": "画面巡检",
+    "IoT 设备": "设备状态"
+  };
+
   const handleDeleteDevice = async (record: AdminDeviceItem) => {
     setLoadingMap((current) => ({ ...current, [record.id]: true }));
     try {
@@ -145,7 +150,7 @@ export default function AdminPage() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Tag>{deviceTypeLabelMap[record.deviceType]}</Tag>
-                  <Tag color="blue">{record.protocol}</Tag>
+                  {/* <Tag color="blue">{record.protocol}</Tag> */}
                   <Tag color="purple">{record.greenhouseName}</Tag>
                 </div>
 
@@ -198,7 +203,10 @@ export default function AdminPage() {
                   </Tag>
                 )
               },
-              { title: "来源", dataIndex: "source" },
+              {
+                title: "来源",
+                render: (_, record) => alertSourceLabelMap[record.source] ?? record.source
+              },
               { title: "告警内容", dataIndex: "message" },
               {
                 title: "时间",
@@ -225,6 +233,9 @@ export default function AdminPage() {
             deviceType: "sensor"
           }}
         >
+          <Form.Item name="protocol" hidden>
+            <Input />
+          </Form.Item>
           <Form.Item label="设备名称" name="name" rules={[{ required: true, message: "请输入设备名称" }]}>
             <Input placeholder="例如：四号棚补光灯" />
           </Form.Item>
@@ -238,15 +249,6 @@ export default function AdminPage() {
                   value,
                   label
                 }))}
-              />
-            </Form.Item>
-            <Form.Item label="通信协议" name="protocol" rules={[{ required: true }]}>
-              <Select
-                options={[
-                  { label: "MQTT", value: "MQTT" },
-                  { label: "RTSP", value: "RTSP" },
-                  { label: "HTTP", value: "HTTP" }
-                ]}
               />
             </Form.Item>
           </div>

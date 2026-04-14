@@ -50,7 +50,8 @@ src
 - `Dashboard`：展示温湿度、光照、设备在线率与 7 天趋势
 - `设备控制中心`：补光灯、通风电机、目标温度控制，模拟 MQTT 指令回执
 - `联动策略管理`：规则表单、任务列表、执行日志
-- `AI 视觉分析`：视频流占位、叶片图片上传分析、异常告警与专家复核
+- `视觉监测告警`：视频流占位、异常告警与专家复核流转入口
+- `图片健康检测`：叶片图片上传分析、病害识别结果与处置建议
 - `农事问答智能体`：Markdown 渲染的对话式问答窗口
 - `系统设备管理`：设备绑定解绑与系统告警日志
 
@@ -92,7 +93,8 @@ npm run preview
 - `src/api/request.ts`：Axios 实例、请求拦截、响应拦截、统一报错
 - `src/layout/AppLayout.tsx`：满屏布局、固定侧边栏、顶部导航、角色切换
 - `src/views/device-control/index.tsx`：设备控制中心完整实现
-- `src/views/vision/index.tsx`：AI 视觉分析页完整实现
+- `src/views/vision/index.tsx`：视觉监测告警页实现
+- `src/views/vision-analysis/index.tsx`：图片健康检测页实现
 - `src/mock/index.ts`：Mock 业务数据与接口行为
 
 ## 后续建议
