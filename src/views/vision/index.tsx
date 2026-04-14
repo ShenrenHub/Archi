@@ -33,9 +33,7 @@ export default function VisionPage() {
         alertId: alert.id
       });
       setAlerts((current) =>
-        current.map((item) =>
-          item.id === alert.id ? { ...item, pushedToExpert: true } : item
-        )
+        current.map((item) => (item.id === alert.id ? { ...item, pushedToExpert: true } : item))
       );
       message.success("已推送专家复核");
     } finally {
@@ -56,10 +54,10 @@ export default function VisionPage() {
               dataSource={alerts}
               renderItem={(item) => (
                 <List.Item className="!px-0">
-                  <div className="w-full rounded-[24px] border border-white/10 bg-white/60 p-4 dark:bg-white/5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="w-full rounded-[24px] border border-slate-200/70 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           <h4 className="text-base font-semibold text-slate-900 dark:text-white">{item.greenhouseName}</h4>
                           <Tag color={levelColorMap[item.level]}>
                             {item.level === "high" ? "高危" : item.level === "medium" ? "中危" : "低危"}

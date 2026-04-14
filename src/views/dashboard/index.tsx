@@ -9,12 +9,10 @@ import {
 } from "@ant-design/icons";
 import { Tag } from "antd";
 import { fetchDashboardOverview, fetchDashboardTrends } from "@/api/dashboard";
-import type {
-  DashboardOverview,
-  DashboardTrendResponse
-} from "@/api/dashboard";
+import type { DashboardOverview, DashboardTrendResponse } from "@/api/dashboard";
 import { AppCard } from "@/components/common/AppCard";
 import { StatCard } from "@/components/common/StatCard";
+import { useThemeStore } from "@/store/theme";
 
 const defaultOverview: DashboardOverview = {
   temperature: 0,
@@ -33,6 +31,7 @@ const defaultTrends: DashboardTrendResponse = {
 };
 
 export default function DashboardPage() {
+  const mode = useThemeStore((state) => state.mode);
   const [overview, setOverview] = useState<DashboardOverview>(defaultOverview);
   const [trendData, setTrendData] = useState<DashboardTrendResponse>(defaultTrends);
 
@@ -47,13 +46,14 @@ export default function DashboardPage() {
 
   const chartOption = useMemo(
     () => ({
+      backgroundColor: "transparent",
       tooltip: {
         trigger: "axis"
       },
       legend: {
         top: 0,
         textStyle: {
-          color: "#64748b"
+          color: mode === "dark" ? "#cbd5e1" : "#64748b"
         }
       },
       grid: {
@@ -66,18 +66,25 @@ export default function DashboardPage() {
       xAxis: {
         type: "category",
         data: trendData.trends.map((item) => item.date),
-        axisLine: { lineStyle: { color: "#cbd5e1" } }
+        axisLine: { lineStyle: { color: mode === "dark" ? "rgba(148,163,184,0.32)" : "#cbd5e1" } },
+        axisLabel: { color: mode === "dark" ? "#cbd5e1" : "#64748b" }
       },
       yAxis: [
         {
           type: "value",
           name: "温湿度",
+          nameTextStyle: { color: mode === "dark" ? "#94a3b8" : "#64748b" },
+          axisLabel: { color: mode === "dark" ? "#cbd5e1" : "#64748b" },
           axisLine: { show: false },
-          splitLine: { lineStyle: { color: "rgba(148, 163, 184, 0.16)" } }
+          splitLine: {
+            lineStyle: { color: mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "rgba(148, 163, 184, 0.16)" }
+          }
         },
         {
           type: "value",
           name: "光照",
+          nameTextStyle: { color: mode === "dark" ? "#94a3b8" : "#64748b" },
+          axisLabel: { color: mode === "dark" ? "#cbd5e1" : "#64748b" },
           axisLine: { show: false },
           splitLine: { show: false }
         }
@@ -110,11 +117,11 @@ export default function DashboardPage() {
         }
       ]
     }),
-    [trendData.trends]
+    [mode, trendData.trends]
   );
 
   return (
-    <div className="grid h-full grid-rows-[auto_minmax(0,1fr)_auto] gap-4 overflow-hidden">
+    <div className="grid gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:overflow-hidden">
       <div className="grid shrink-0 gap-4 xl:grid-cols-5">
         <div className="grid gap-4 md:grid-cols-2 xl:col-span-3 xl:grid-cols-3">
           <StatCard
@@ -141,28 +148,28 @@ export default function DashboardPage() {
         </div>
 
         <AppCard className="xl:col-span-2">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm text-slate-500 dark:text-slate-300">运行总览</p>
               <h3 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">
                 {overview.greenhouseCount} 座大棚
               </h3>
             </div>
-            <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white dark:bg-white dark:text-slate-900">
+            <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white dark:bg-slate-800 dark:text-slate-50">
               <p className="text-xs opacity-80">在线设备</p>
               <p className="mt-2 text-2xl font-semibold">
                 {overview.onlineDevices}/{overview.totalDevices}
               </p>
             </div>
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl bg-white/60 p-4 dark:bg-white/5">
               <p className="text-sm text-slate-500 dark:text-slate-300">CO2</p>
               <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{overview.co2} ppm</p>
             </div>
-            <div className="rounded-2xl bg-amber-500/10 p-4">
+            <div className="rounded-2xl bg-amber-500/10 p-4 dark:bg-amber-500/12">
               <p className="text-sm text-slate-500 dark:text-slate-300">活跃告警</p>
-              <p className="mt-2 text-2xl font-semibold text-amber-600">{overview.activeAlerts}</p>
+              <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-300">{overview.activeAlerts}</p>
             </div>
           </div>
         </AppCard>
@@ -178,13 +185,13 @@ export default function DashboardPage() {
         </AppCard>
 
         <AppCard title="多棚状态快照" className="min-h-0 overflow-hidden">
-          <div className="grid h-full grid-cols-1 gap-3 xl:grid-cols-1">
+          <div className="grid h-full grid-cols-1 gap-3">
             {trendData.greenhouses.map((item) => (
               <div
                 key={item.id}
-                className="rounded-[24px] border border-white/10 bg-white/60 p-4 dark:bg-white/5"
+                className="rounded-[24px] border border-slate-200/70 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5"
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <h4 className="text-base font-semibold text-slate-900 dark:text-white">{item.name}</h4>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{item.crop}</p>

@@ -179,7 +179,7 @@ export default function DeviceControlPage() {
           </div>
         </AppCard>
 
-        <AppCard title="最近控制记录" className="flex h-full min-h-0 flex-col">
+        <AppCard title="最近控制记录" className="flex lg:h-full lg:min-h-0 flex-col">
           {actionHistory.length === 0 ? (
             <div className="flex h-full min-h-[200px] items-center justify-center text-sm text-slate-500 dark:text-slate-300">
               暂无操作记录，试试切换设备状态。
@@ -287,3 +287,4 @@ export default function DeviceControlPage() {
     </div>
   );
 }
+

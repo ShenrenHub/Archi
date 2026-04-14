@@ -14,7 +14,8 @@ body,
 
 body {
   margin: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
   background:
     radial-gradient(circle at top left, rgba(18, 183, 106, 0.22), transparent 28%),
@@ -26,10 +27,10 @@ body {
 .dark body {
   color-scheme: dark;
   background:
-    radial-gradient(circle at top left, rgba(18, 183, 106, 0.18), transparent 24%),
-    radial-gradient(circle at right center, rgba(245, 158, 11, 0.1), transparent 18%),
-    linear-gradient(180deg, #08110d 0%, #091923 50%, #08131b 100%);
-  color: #e2e8f0;
+    radial-gradient(circle at top left, rgba(18, 183, 106, 0.14), transparent 24%),
+    radial-gradient(circle at right center, rgba(245, 158, 11, 0.08), transparent 18%),
+    linear-gradient(180deg, #040816 0%, #08111f 48%, #07111a 100%);
+  color: #f8fafc;
 }
 
 * {
@@ -47,4 +48,118 @@ body {
 
 .markdown-body :where(h1, h2, h3, h4) {
   margin-top: 0;
+}
+
+.dark .text-slate-300 {
+  color: rgb(226 232 240 / 0.96) !important;
+}
+
+.dark .text-slate-400 {
+  color: rgb(203 213 225 / 0.9) !important;
+}
+
+.dark .text-slate-500 {
+  color: rgb(226 232 240 / 0.82) !important;
+}
+
+.dark .text-slate-600 {
+  color: rgb(226 232 240 / 0.9) !important;
+}
+
+.dark .text-slate-700 {
+  color: rgb(241 245 249 / 0.95) !important;
+}
+
+.dark .text-slate-800 {
+  color: rgb(248 250 252 / 0.98) !important;
+}
+
+.dark .text-slate-900 {
+  color: rgb(248 250 252 / 0.99) !important;
+}
+
+.dark .text-slate-950 {
+  color: rgb(255 255 255 / 0.99) !important;
+}
+
+.dark .text-brand-600 {
+  color: rgb(110 231 183 / 0.98) !important;
+}
+
+.dark .text-amber-600 {
+  color: rgb(253 224 71 / 0.96) !important;
+}
+
+.dark .ant-breadcrumb,
+.dark .ant-breadcrumb a,
+.dark .ant-breadcrumb-link,
+.dark .ant-breadcrumb-separator {
+  color: rgb(203 213 225 / 0.9);
+}
+
+.dark .ant-tag {
+  color: rgb(241 245 249 / 0.96);
+}
+
+.dark .ant-input,
+.dark .ant-input-number,
+.dark .ant-input-number-input,
+.dark .ant-input-affix-wrapper,
+.dark .ant-select-selector,
+.dark .ant-picker,
+.dark .ant-input-outlined,
+.dark .ant-input-number-outlined,
+.dark .ant-select-outlined:not(.ant-select-customize-input) .ant-select-selector,
+.dark .ant-picker-outlined {
+  background: rgba(15, 23, 42, 0.72) !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  color: #f1f5f9 !important;
+}
+
+.dark .ant-input::placeholder,
+.dark .ant-input-number-input::placeholder,
+.dark .ant-select-selection-placeholder,
+.dark .ant-picker-input input::placeholder,
+.dark .ant-input-textarea textarea::placeholder {
+  color: rgba(203, 213, 225, 0.68) !important;
+}
+
+.dark .ant-drawer .ant-drawer-content,
+.dark .ant-drawer .ant-drawer-header,
+.dark .ant-drawer .ant-drawer-body {
+  background: #020617;
+  color: #f1f5f9;
+}
+
+.dark .ant-table,
+.dark .ant-table-container,
+.dark .ant-table-content,
+.dark .ant-table-cell,
+.dark .ant-table-thead > tr > th,
+.dark .ant-table-tbody > tr > td {
+  background: transparent !important;
+  color: #f1f5f9 !important;
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+.dark .ant-table-thead > tr > th {
+  color: rgba(241, 245, 249, 0.94) !important;
+}
+
+.dark .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: rgba(30, 41, 59, 0.45) !important;
+}
+
+.dark .ant-list .ant-list-item {
+  border-color: rgba(148, 163, 184, 0.12);
+}
+
+.dark .ant-upload-wrapper .ant-upload {
+  color: #f1f5f9;
+}
+
+@media (max-width: 1023px) {
+  body {
+    overflow-y: auto;
+  }
 }

@@ -1,20 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Drawer,
-  Form,
-  Input,
-  Select,
-  Table,
-  Tag,
-  message
-} from "antd";
-import {
-  CameraOutlined,
-  DeleteOutlined,
-  PlusOutlined,
-  ThunderboltOutlined
-} from "@ant-design/icons";
+import { Button, Drawer, Form, Input, Select, Table, Tag, message } from "antd";
+import { CameraOutlined, DeleteOutlined, PlusOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import {
   createManagedDevice,
   deleteManagedDevice,
@@ -85,7 +71,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden">
+    <div className="grid gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)] lg:overflow-hidden">
       <AppCard
         title="设备管理控制台"
         extra={
@@ -111,8 +97,8 @@ export default function AdminPage() {
       </AppCard>
 
       <div className="grid min-h-0 gap-4 xl:grid-cols-[1.4fr_0.95fr]">
-        <AppCard title="设备资产列表" className="min-h-0 overflow-hidden">
-          <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+        <AppCard title="设备资产列表" className="lg:min-h-0 lg:overflow-hidden">
+          <div className="flex flex-col gap-3 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {devices.map((record) => (
               <div
                 key={record.id}
@@ -121,11 +107,7 @@ export default function AdminPage() {
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="flex min-w-0 flex-1 items-start gap-4">
                     <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 p-3 text-white">
-                      {record.deviceType === "camera" ? (
-                        <CameraOutlined />
-                      ) : (
-                        <ThunderboltOutlined />
-                      )}
+                      {record.deviceType === "camera" ? <CameraOutlined /> : <ThunderboltOutlined />}
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -190,7 +172,7 @@ export default function AdminPage() {
           </div>
         </AppCard>
 
-        <AppCard title="系统全量告警日志" className="min-h-0 overflow-hidden">
+        <AppCard title="系统全量告警日志" className="lg:min-h-0 lg:overflow-hidden">
           <Table
             rowKey="id"
             dataSource={alertLogs}

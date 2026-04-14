@@ -80,6 +80,17 @@ export interface SmartJavaAiAnalyzeResponse {
   rawPayload?: Record<string, unknown>;
 }
 
+export interface VisionStreamInfo {
+  greenhouseId: string;
+  greenhouseName: string;
+  streamType: "webrtc" | "hls" | "flv" | "rtsp-proxy";
+  playUrl: string;
+  status: "online" | "offline" | "loading";
+  snapshotUrl?: string;
+  resolution?: string;
+  latencyMs?: number;
+}
+
 const smartJavaAiRequest = axios.create({
   baseURL: import.meta.env.VITE_SMARTJAVAAI_BASE_URL || "/smartjavaai",
   timeout: 30000,
@@ -91,15 +102,13 @@ const smartJavaAiRequest = axios.create({
 /**
  * 业务场景 4-2:
  * 上传叶片图片后，调用视觉分析接口，返回遮挡、病变与处置建议。
- * 当前支持通过 base64 文本传图，便于平滑切换到 SmartJavaAI。
  */
 export const analyzeCropImage = (payload: VisionAnalyzeRequest) =>
   request.post<VisionAnalyzeRequest, VisionAnalyzeResponse>("/vision/analyze", payload);
 
 /**
  * 业务场景 4-2:
- * 预留 SmartJavaAI 外部服务接口，通过 base64 文本传输图片并接收结构化分析结果。
- * 部署时仅需配置 VITE_SMARTJAVAAI_BASE_URL 即可切换到真实服务。
+ * 直连 SmartJavaAI 外部服务，通过 base64 文本上传图片。
  */
 export const submitSmartJavaAiAnalysis = (payload: SmartJavaAiAnalyzeRequest) =>
   smartJavaAiRequest.post<SmartJavaAiAnalyzeRequest, SmartJavaAiAnalyzeResponse>(
@@ -126,17 +135,24 @@ export const pushAlertToExpert = (payload: PushReviewRequest) =>
 
 /**
  * 业务场景 4-5:
- * 获取待专家复核的视觉异常任务列表，用于专家工作台和管理员追踪视图。
+ * 获取待专家复核的视觉异常任务列表。
  */
 export const fetchExpertReviewTasks = () =>
   request.get<never, ExpertReviewTask[]>("/vision/expert-review/tasks");
 
 /**
  * 业务场景 4-5:
- * 专家提交复核意见，系统需回写建议、复核结论和时间。
+ * 专家提交复核意见。
  */
 export const submitExpertReview = (payload: SubmitExpertReviewRequest) =>
   request.post<SubmitExpertReviewRequest, ExpertReviewTask>(
     "/vision/expert-review/submit",
     payload
   );
+
+/**
+ * 业务场景 4-1:
+ * 获取指定大棚的视频流播放信息。
+ */
+export const fetchVisionStreamInfo = (greenhouseId: string) =>
+  request.get<never, VisionStreamInfo>(`/vision/streams/${greenhouseId}`);
