@@ -111,77 +111,79 @@ export default function AdminPage() {
       </AppCard>
 
       <div className="grid min-h-0 gap-4 xl:grid-cols-[1.4fr_0.95fr]">
-        <AppCard title="设备资产卡片视图" className="min-h-0 overflow-hidden">
-          <div className="grid h-full min-h-0 grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 overflow-y-auto pr-1">
+        <AppCard title="设备资产列表" className="min-h-0 overflow-hidden">
+          <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto pr-1">
             {devices.map((record) => (
               <div
                 key={record.id}
                 className="rounded-[26px] border border-white/10 bg-white/60 p-5 dark:bg-white/5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 p-3 text-white">
-                    {record.deviceType === "camera" ? (
-                      <CameraOutlined />
-                    ) : (
-                      <ThunderboltOutlined />
-                    )}
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex min-w-0 flex-1 items-start gap-4">
+                    <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 p-3 text-white">
+                      {record.deviceType === "camera" ? (
+                        <CameraOutlined />
+                      ) : (
+                        <ThunderboltOutlined />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{record.name}</h3>
+                        <Tag
+                          color={
+                            record.status === "online"
+                              ? "green"
+                              : record.status === "pending"
+                                ? "gold"
+                                : "default"
+                          }
+                        >
+                          {record.status === "online"
+                            ? "在线"
+                            : record.status === "pending"
+                              ? "待接入"
+                              : "离线"}
+                        </Tag>
+                        <Tag>{deviceTypeLabelMap[record.deviceType]}</Tag>
+                        <Tag color="purple">{record.greenhouseName}</Tag>
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">{record.deviceCode}</p>
+                      <p className="mt-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
+                        {record.description}
+                      </p>
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {record.capabilities.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full bg-slate-900/5 px-3 py-1 text-xs text-slate-600 dark:bg-white/10 dark:text-slate-300"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <Tag
-                    color={
-                      record.status === "online"
-                        ? "green"
-                        : record.status === "pending"
-                          ? "gold"
-                          : "default"
-                    }
-                  >
-                    {record.status === "online"
-                      ? "在线"
-                      : record.status === "pending"
-                        ? "待接入"
-                        : "离线"}
-                  </Tag>
-                </div>
 
-                <div className="mt-4">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{record.name}</h3>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{record.deviceCode}</p>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Tag>{deviceTypeLabelMap[record.deviceType]}</Tag>
-                  {/* <Tag color="blue">{record.protocol}</Tag> */}
-                  <Tag color="purple">{record.greenhouseName}</Tag>
-                </div>
-
-                <p className="mt-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
-                  {record.description}
-                </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {record.capabilities.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full bg-slate-900/5 px-3 py-1 text-xs text-slate-600 dark:bg-white/10 dark:text-slate-300"
-                    >
-                      {item}
+                  <div className="flex shrink-0 items-center justify-between gap-3 xl:block">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      更新于 {formatDateTime(record.updatedAt)}
                     </span>
-                  ))}
-                </div>
-
-                <div className="mt-5 flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    更新于 {formatDateTime(record.updatedAt)}
-                  </span>
-                  <Button
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    loading={Boolean(loadingMap[record.id])}
-                    onClick={() => void handleDeleteDevice(record)}
-                  >
-                    删除
-                  </Button>
+                    <div className="xl:mt-3">
+                      <Button
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        loading={Boolean(loadingMap[record.id])}
+                        onClick={() => void handleDeleteDevice(record)}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
