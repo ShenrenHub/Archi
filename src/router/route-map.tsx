@@ -33,56 +33,56 @@ export const appRoutes: AppRouteItem[] = [
     path: "/dashboard",
     label: "数据驾驶舱",
     icon: <AppstoreOutlined />,
-    roles: ["farmer", "admin"],
+    roles: ["farmer", "admin", "expert"],
     element: <DashboardPage />
   },
   {
     path: "/device-control",
-    label: "设备控制中心",
+    label: "控制命令中心",
     icon: <ControlOutlined />,
-    roles: ["farmer"],
+    roles: ["farmer", "admin"],
     element: <DeviceControlPage />
   },
   {
     path: "/strategy",
-    label: "联动策略管理",
+    label: "联动规则管理",
     icon: <BulbOutlined />,
     roles: ["farmer", "admin"],
     element: <StrategyPage />
   },
   {
     path: "/vision",
-    label: "视觉监测告警",
+    label: "摄像头与视觉任务",
     icon: <CameraOutlined />,
     roles: ["farmer", "expert", "admin"],
     element: <VisionPage />
   },
   {
     path: "/vision-analysis",
-    label: "图片健康检测",
+    label: "视觉回调写回",
     icon: <CloudUploadOutlined />,
     roles: ["farmer", "expert", "admin"],
     element: <VisionAnalysisPage />
   },
   {
     path: "/expert-review",
-    label: "专家复核",
+    label: "专家复核提交",
     icon: <EyeOutlined />,
     roles: ["expert", "admin"],
     element: <ExpertReviewPage />
   },
   {
     path: "/agent",
-    label: "农事问答智能体",
+    label: "农事问答",
     icon: <RobotOutlined />,
-    roles: ["farmer", "expert"],
+    roles: ["farmer", "expert", "admin"],
     element: <AgentPage />
   },
   {
     path: "/admin",
-    label: "设备管理",
+    label: "农场与平台管理",
     icon: <SafetyOutlined />,
-    roles: ["admin"],
+    roles: ["admin", "farmer"],
     element: <AdminPage />
   }
 ];

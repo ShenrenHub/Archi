@@ -1,10 +1,15 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import clsx from "clsx";
-import type { AgentChatMessage } from "@/api/agent";
+
+interface ConversationMessage {
+  id: string | number;
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface AgentConversationProps {
-  messages: AgentChatMessage[];
+  messages: ConversationMessage[];
 }
 
 export const AgentConversation = ({ messages }: AgentConversationProps) => (

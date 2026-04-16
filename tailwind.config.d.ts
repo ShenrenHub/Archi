@@ -1,4 +1,5 @@
 declare const _default: {
+    darkMode: "class";
     content: string[];
     theme: {
         extend: {

@@ -1,25 +1,32 @@
 import { request } from "@/api/request";
 
-export interface AgentChatMessage {
-  id: string;
-  role: "user" | "assistant";
+export interface QaMessage {
+  id: number;
+  farmId: number;
+  sessionId: number;
+  messageRole: "USER" | "ASSISTANT";
   content: string;
   createdAt: string;
 }
 
-export interface AgentChatRequest {
+export interface CreateSessionPayload {
+  farmId: number;
+  sessionTitle: string;
+  createdUserId: number;
+}
+
+export interface AskQuestionPayload {
+  farmId: number;
+  sessionId: number;
   question: string;
-  history: AgentChatMessage[];
+  extraDocument: string;
 }
 
-export interface AgentChatResponse {
-  answer: AgentChatMessage;
-  references: string[];
-}
+export const createQaSession = (payload: CreateSessionPayload) =>
+  request.post<CreateSessionPayload, number>("/api/qa/sessions", payload);
 
-/**
- * 业务场景 5:
- * 提交农事问题与上下文消息，获取基于 RAG 的智能问答回复。
- */
-export const sendAgentQuestion = (payload: AgentChatRequest) =>
-  request.post<AgentChatRequest, AgentChatResponse>("/agent/chat", payload);
+export const askQuestion = (payload: AskQuestionPayload) =>
+  request.post<AskQuestionPayload, string>("/api/qa/ask", payload);
+
+export const fetchQaHistory = (farmId: number, sessionId: number) =>
+  request.get<never, QaMessage[]>(`/api/qa/history?farmId=${farmId}&sessionId=${sessionId}`);

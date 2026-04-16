@@ -1,104 +1,153 @@
-import { useState } from "react";
-import { Button, Input, Tag, message } from "antd";
-import dayjs from "dayjs";
+import { useEffect, useMemo, useState } from "react";
+import { Button, Empty, Form, Input, List, Tag } from "antd";
 import { SendOutlined } from "@ant-design/icons";
-import { sendAgentQuestion } from "@/api/agent";
-import type { AgentChatMessage } from "@/api/agent";
+import { askQuestion, createQaSession, fetchQaHistory, type QaMessage } from "@/api/agent";
 import { AgentConversation } from "@/components/chat/AgentConversation";
 import { AppCard } from "@/components/common/AppCard";
+import { useUserStore } from "@/store/user";
+import { formatDateTime } from "@/utils/time";
 
-const initialMessages: AgentChatMessage[] = [
-  {
-    id: "assistant-init",
-    role: "assistant",
-    createdAt: dayjs().toISOString(),
-    content:
-      "欢迎使用农事问答智能体。你可以询问病虫害、环境策略、设备联动或作物管理建议。"
-  }
-];
+interface SessionDraft {
+  id: number;
+  title: string;
+}
 
 export default function AgentPage() {
-  const [messages, setMessages] = useState<AgentChatMessage[]>(initialMessages);
+  const farmId = useUserStore((state) => state.farmId);
+  const userId = useUserStore((state) => state.userId);
+  const [sessionTitle, setSessionTitle] = useState("番茄病害诊断");
+  const [sessions, setSessions] = useState<SessionDraft[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [history, setHistory] = useState<QaMessage[]>([]);
   const [question, setQuestion] = useState("");
-  const [references, setReferences] = useState<string[]>([]);
-  const [sending, setSending] = useState(false);
+  const [extraDocument, setExtraDocument] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [asking, setAsking] = useState(false);
 
-  const handleSend = async () => {
-    const content = question.trim();
-    if (!content) {
+  useEffect(() => {
+    if (!farmId || !currentSessionId) {
       return;
     }
 
-    const userMessage: AgentChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content,
-      createdAt: dayjs().toISOString()
-    };
+    void fetchQaHistory(farmId, currentSessionId).then(setHistory).catch(() => setHistory([]));
+  }, [currentSessionId, farmId]);
 
-    const nextMessages = [...messages, userMessage];
-    setMessages(nextMessages);
-    setQuestion("");
-    setSending(true);
+  const conversation = useMemo(
+    () =>
+      history.map((item) => ({
+        id: item.id,
+        role: item.messageRole === "ASSISTANT" ? "assistant" as const : "user" as const,
+        content: item.content
+      })),
+    [history]
+  );
 
+  const handleCreateSession = async () => {
+    if (!farmId || !userId) {
+      return;
+    }
+
+    setCreating(true);
     try {
-      const response = await sendAgentQuestion({
-        question: content,
-        history: nextMessages
+      const sessionId = await createQaSession({
+        farmId,
+        sessionTitle,
+        createdUserId: userId
       });
-      setMessages((current) => [...current, response.answer]);
-      setReferences(response.references);
-    } catch {
-      message.error("问答请求失败");
+      const nextSession = { id: sessionId, title: sessionTitle };
+      setSessions((current) => [nextSession, ...current]);
+      setCurrentSessionId(sessionId);
+      setHistory([]);
     } finally {
-      setSending(false);
+      setCreating(false);
     }
   };
 
+  const handleAsk = async () => {
+    if (!farmId || !currentSessionId || !question.trim()) {
+      return;
+    }
+
+    setAsking(true);
+    try {
+      await askQuestion({
+        farmId,
+        sessionId: currentSessionId,
+        question,
+        extraDocument
+      });
+      setQuestion("");
+      setHistory(await fetchQaHistory(farmId, currentSessionId));
+    } finally {
+      setAsking(false);
+    }
+  };
+
+  if (!farmId || !userId) {
+    return <Empty description="当前账号缺少 farmId 或 userId，无法发起问答。" />;
+  }
+
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-      <AppCard title="智能体农事问答">
-        <div className="flex h-[70vh] flex-col">
-          <AgentConversation messages={messages} />
-          <div className="mt-4 flex gap-3">
-            <Input.TextArea
-              value={question}
-              rows={3}
-              onChange={(event) => setQuestion(event.target.value)}
-              placeholder="例如：番茄棚湿度持续偏高且叶片出现黄色斑点，该如何处理？"
-            />
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              loading={sending}
-              onClick={() => void handleSend()}
-            >
-              发送
+    <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <AppCard title="问答会话与历史">
+        <div className="flex h-[70vh] flex-col gap-4">
+          {conversation.length > 0 ? (
+            <AgentConversation messages={conversation} />
+          ) : (
+            <div className="flex flex-1 items-center justify-center rounded-[24px] bg-white/40 text-sm text-slate-500 dark:bg-white/5 dark:text-slate-300">
+              创建会话并发送问题后，这里会展示 `/api/qa/history` 返回的历史消息。
+            </div>
+          )}
+          <Form layout="vertical">
+            <Form.Item label="问题">
+              <Input.TextArea rows={3} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder="番茄叶片卷曲怎么办？" />
+            </Form.Item>
+            <Form.Item label="补充上下文">
+              <Input.TextArea rows={2} value={extraDocument} onChange={(event) => setExtraDocument(event.target.value)} placeholder="棚内最近三天温度偏高" />
+            </Form.Item>
+            <Button type="primary" icon={<SendOutlined />} loading={asking} disabled={!currentSessionId} onClick={() => void handleAsk()}>
+              发送问题
             </Button>
-          </div>
+          </Form>
         </div>
       </AppCard>
 
       <div className="space-y-4">
-        <AppCard title="检索参考">
-          <div className="flex flex-wrap gap-2">
-            {references.length > 0 ? (
-              references.map((item) => (
-                <Tag key={item} color="green">
-                  {item}
-                </Tag>
-              ))
-            ) : (
-              <span className="text-sm text-slate-500 dark:text-slate-300">发送问题后，这里会显示参考信息。</span>
-            )}
-          </div>
+        <AppCard title="创建问答会话">
+          <Input value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value)} placeholder="会话标题" />
+          <Button className="mt-4" type="primary" loading={creating} onClick={() => void handleCreateSession()}>
+            创建会话
+          </Button>
         </AppCard>
 
-        <AppCard title="推荐提问">
+        <AppCard title="本地会话列表">
+          <List
+            dataSource={sessions}
+            renderItem={(item) => (
+              <List.Item className="!px-0">
+                <button type="button" className="w-full rounded-[20px] bg-white/60 p-4 text-left dark:bg-white/5" onClick={() => setCurrentSessionId(item.id)}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-medium text-slate-900 dark:text-white">{item.title}</span>
+                    <Tag color={item.id === currentSessionId ? "green" : "default"}>{item.id}</Tag>
+                  </div>
+                </button>
+              </List.Item>
+            )}
+          />
+        </AppCard>
+
+        <AppCard title="最近历史摘要">
           <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-            <p>1. 最近湿度高，黄瓜叶片边缘卷曲，应该优先调什么设备？</p>
-            <p>2. 如何设置番茄棚的清晨补光与午后排湿联动策略？</p>
-            <p>3. 视觉告警提示疑似病斑时，农户应该先做哪些现场排查？</p>
+            {history.slice(-3).map((item) => (
+              <div key={item.id} className="rounded-[20px] bg-white/60 p-3 dark:bg-white/5">
+                <div className="flex items-center justify-between gap-3">
+                  <Tag>{item.messageRole}</Tag>
+                  <span>{formatDateTime(item.createdAt)}</span>
+                </div>
+                <p className="mt-2 line-clamp-3">{item.content}</p>
+              </div>
+            ))}
+            {history.length === 0 ? <span>暂无历史。</span> : null}
           </div>
         </AppCard>
       </div>

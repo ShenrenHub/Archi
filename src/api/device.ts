@@ -1,63 +1,36 @@
 import { request } from "@/api/request";
 
-export interface DeviceControlItem {
-  id: string;
-  name: string;
-  type: "switch" | "slider";
-  controlType?: "light" | "fan" | "thermostat";
-  online: boolean;
-  statusText: string;
-  powerOn?: boolean;
-  value?: number;
-  min?: number;
-  max?: number;
-  unit?: string;
-  description: string;
+export interface DeviceItem {
+  id: number;
+  farmId: number;
+  greenhouseId: number | null;
+  deviceCode: string;
+  deviceName: string;
+  protocolType: string;
+  onlineStatus: string;
 }
 
-export interface DeviceControlResponse {
-  mqttState: "connecting" | "online" | "offline";
-  controls: DeviceControlItem[];
+export interface RegisterDevicePayload {
+  farmId: number;
+  greenhouseId: number;
+  deviceTypeId: number;
+  deviceCode: string;
+  deviceName: string;
+  protocolType: string;
+  integrationMode: string;
 }
 
-export interface ToggleDeviceRequest {
-  deviceId: string;
-  powerOn: boolean;
+export interface BindDevicePayload {
+  farmId: number;
+  deviceId: number;
+  greenhouseId: number;
 }
 
-export interface TargetTemperatureRequest {
-  deviceId: string;
-  targetTemperature: number;
-}
+export const registerDevice = (payload: RegisterDevicePayload) =>
+  request.post<RegisterDevicePayload, number>("/api/devices/register", payload);
 
-export interface DeviceCommandResult {
-  deviceId: string;
-  success: boolean;
-  statusText: string;
-  powerOn?: boolean;
-  targetTemperature?: number;
-}
+export const bindDevice = (payload: BindDevicePayload) =>
+  request.post<BindDevicePayload, number>("/api/devices/bind", payload);
 
-/**
- * 业务场景 2:
- * 查询远程控制中心中所有设备的当前状态，初始化控制面板与 MQTT 在线状态。
- */
-export const fetchDeviceControls = () =>
-  request.get<never, DeviceControlResponse>("/device/controls");
-
-/**
- * 业务场景 2:
- * 下发开关类设备 MQTT 指令，前端需等待执行结果反馈后再更新界面。
- */
-export const toggleDevicePower = (payload: ToggleDeviceRequest) =>
-  request.post<ToggleDeviceRequest, DeviceCommandResult>("/device/toggle", payload);
-
-/**
- * 业务场景 2:
- * 下发目标温度设定指令，常用于滑动条交互的确认提交。
- */
-export const setTargetTemperature = (payload: TargetTemperatureRequest) =>
-  request.post<TargetTemperatureRequest, DeviceCommandResult>(
-    "/device/target-temperature",
-    payload
-  );
+export const fetchDevices = (farmId: number) =>
+  request.get<never, DeviceItem[]>(`/api/devices?farmId=${farmId}`);

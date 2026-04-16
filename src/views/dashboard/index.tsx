@@ -1,244 +1,232 @@
-import { useEffect, useMemo, useState } from "react";
-import ReactECharts from "echarts-for-react";
-import {
-  AlertOutlined,
-  CloudServerOutlined,
-  DashboardOutlined,
-  ExperimentOutlined,
-  ThunderboltOutlined
-} from "@ant-design/icons";
-import { Tag } from "antd";
-import { fetchDashboardOverview, fetchDashboardTrends } from "@/api/dashboard";
-import type { DashboardOverview, DashboardTrendResponse } from "@/api/dashboard";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button, Empty, Table, Tag } from "antd";
+import { AlertOutlined, ApiOutlined, ReloadOutlined } from "@ant-design/icons";
+import { fetchAlerts, closeAlert, type AlertItem } from "@/api/alerts";
+import { fetchDevices, type DeviceItem } from "@/api/device";
+import { fetchLatestTelemetry, fetchTelemetryOverview, type LatestTelemetryItem, type TelemetryOverviewItem } from "@/api/telemetry";
 import { AppCard } from "@/components/common/AppCard";
 import { StatCard } from "@/components/common/StatCard";
-import { useThemeStore } from "@/store/theme";
-
-const defaultOverview: DashboardOverview = {
-  temperature: 0,
-  humidity: 0,
-  light: 0,
-  co2: 0,
-  onlineDevices: 0,
-  totalDevices: 0,
-  activeAlerts: 0,
-  greenhouseCount: 0
-};
-
-const defaultTrends: DashboardTrendResponse = {
-  trends: [],
-  greenhouses: []
-};
+import { useMqttBridge } from "@/hooks/useMqttBridge";
+import { useUserStore } from "@/store/user";
+import { formatDateTime } from "@/utils/time";
 
 export default function DashboardPage() {
-  const mode = useThemeStore((state) => state.mode);
-  const [overview, setOverview] = useState<DashboardOverview>(defaultOverview);
-  const [trendData, setTrendData] = useState<DashboardTrendResponse>(defaultTrends);
+  const farmId = useUserStore((state) => state.farmId);
+  const farms = useUserStore((state) => state.farms);
+  const [overview, setOverview] = useState<TelemetryOverviewItem[]>([]);
+  const [latestTelemetry, setLatestTelemetry] = useState<LatestTelemetryItem[]>([]);
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [devices, setDevices] = useState<DeviceItem[]>([]);
+  const [closingId, setClosingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { state, latency, lastMessage } = useMqttBridge(farmId);
+
+  const loadData = useCallback(async () => {
+    if (!farmId) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const [overviewResponse, latestResponse, alertResponse, deviceResponse] = await Promise.all([
+        fetchTelemetryOverview(farmId),
+        fetchLatestTelemetry(farmId),
+        fetchAlerts(farmId),
+        fetchDevices(farmId)
+      ]);
+
+      setOverview(overviewResponse);
+      setLatestTelemetry(latestResponse);
+      setAlerts(alertResponse);
+      setDevices(deviceResponse);
+    } finally {
+      setLoading(false);
+    }
+  }, [farmId]);
 
   useEffect(() => {
-    void Promise.all([fetchDashboardOverview(), fetchDashboardTrends()]).then(
-      ([overviewResponse, trendResponse]) => {
-        setOverview(overviewResponse);
-        setTrendData(trendResponse);
-      }
-    );
-  }, []);
+    void loadData();
+  }, [loadData]);
 
-  const chartOption = useMemo(
-    () => ({
-      backgroundColor: "transparent",
-      tooltip: {
-        trigger: "axis"
-      },
-      legend: {
-        top: 0,
-        textStyle: {
-          color: mode === "dark" ? "#cbd5e1" : "#64748b"
-        }
-      },
-      grid: {
-        left: 18,
-        right: 16,
-        bottom: 18,
-        top: 48,
-        containLabel: true
-      },
-      xAxis: {
-        type: "category",
-        data: trendData.trends.map((item) => item.date),
-        axisLine: { lineStyle: { color: mode === "dark" ? "rgba(148,163,184,0.32)" : "#cbd5e1" } },
-        axisLabel: { color: mode === "dark" ? "#cbd5e1" : "#64748b" }
-      },
-      yAxis: [
-        {
-          type: "value",
-          name: "温湿度",
-          nameTextStyle: { color: mode === "dark" ? "#94a3b8" : "#64748b" },
-          axisLabel: { color: mode === "dark" ? "#cbd5e1" : "#64748b" },
-          axisLine: { show: false },
-          splitLine: {
-            lineStyle: { color: mode === "dark" ? "rgba(148, 163, 184, 0.12)" : "rgba(148, 163, 184, 0.16)" }
-          }
-        },
-        {
-          type: "value",
-          name: "光照",
-          nameTextStyle: { color: mode === "dark" ? "#94a3b8" : "#64748b" },
-          axisLabel: { color: mode === "dark" ? "#cbd5e1" : "#64748b" },
-          axisLine: { show: false },
-          splitLine: { show: false }
-        }
-      ],
-      series: [
-        {
-          name: "温度",
-          type: "line",
-          smooth: true,
-          data: trendData.trends.map((item) => item.temperature),
-          lineStyle: { color: "#12b76a", width: 3 },
-          itemStyle: { color: "#12b76a" }
-        },
-        {
-          name: "湿度",
-          type: "line",
-          smooth: true,
-          data: trendData.trends.map((item) => item.humidity),
-          lineStyle: { color: "#1fb6ff", width: 3 },
-          itemStyle: { color: "#1fb6ff" }
-        },
-        {
-          name: "光照",
-          type: "line",
-          yAxisIndex: 1,
-          smooth: true,
-          data: trendData.trends.map((item) => item.light),
-          lineStyle: { color: "#f59e0b", width: 3 },
-          itemStyle: { color: "#f59e0b" }
-        }
-      ]
-    }),
-    [mode, trendData.trends]
-  );
+  useEffect(() => {
+    if (!farmId) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void loadData();
+    }, 15000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [farmId, loadData]);
+
+  useEffect(() => {
+    if (!lastMessage) {
+      return;
+    }
+
+    setLatestTelemetry((current) => {
+      const next = [lastMessage, ...current.filter((item) => item.deviceId !== lastMessage.deviceId || item.metricCode !== lastMessage.metricCode)];
+      return next.slice(0, 10);
+    });
+  }, [lastMessage]);
+
+  const stats = useMemo(() => {
+    const temperature = overview.find((item) => item.temperature !== null)?.temperature ?? 0;
+    const humidity = overview.find((item) => item.humidity !== null)?.humidity ?? 0;
+    const lightLux = overview.find((item) => item.lightLux !== null)?.lightLux ?? 0;
+    const onlineDevices = devices.filter((item) => item.onlineStatus === "ONLINE").length;
+
+    return {
+      temperature,
+      humidity,
+      lightLux,
+      greenhouseCount: overview.length,
+      onlineDevices,
+      totalDevices: devices.length,
+      activeAlerts: alerts.filter((item) => item.alertStatus === "OPEN").length
+    };
+  }, [alerts, devices, overview]);
+
+  const handleCloseAlert = async (alertId: number) => {
+    if (!farmId) {
+      return;
+    }
+
+    setClosingId(alertId);
+    try {
+      await closeAlert({
+        alertId,
+        farmId,
+        closeRemark: "前端联调关闭"
+      });
+      await loadData();
+    } finally {
+      setClosingId(null);
+    }
+  };
+
+  if (!farmId) {
+    return <Empty description="当前账号没有可用 farmId，请先在右上角选择农场上下文。" />;
+  }
 
   return (
-    <div className="grid gap-4 lg:h-full lg:grid-rows-[auto_minmax(0,1fr)_auto] lg:overflow-hidden">
-      <div className="grid shrink-0 gap-4 xl:grid-cols-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:col-span-3 xl:grid-cols-3">
-          <StatCard
-            title="棚内温度"
-            value={overview.temperature.toFixed(1)}
-            suffix="°C"
-            highlight="控制在适宜区间"
-            icon={<ExperimentOutlined />}
-          />
-          <StatCard
-            title="空气湿度"
-            value={overview.humidity.toFixed(1)}
-            suffix="%"
-            highlight="建议观察高湿区域"
-            icon={<CloudServerOutlined />}
-          />
-          <StatCard
-            title="光照强度"
-            value={`${overview.light}`}
-            suffix="Lux"
-            highlight="补光策略可联动"
-            icon={<ThunderboltOutlined />}
-          />
-        </div>
+    <div className="grid gap-4 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
+      <div className="grid gap-4 xl:grid-cols-4">
+        <StatCard title="平均温度" value={stats.temperature.toFixed(1)} suffix="°C" highlight="来自 overview 接口" icon={<ApiOutlined />} />
+        <StatCard title="平均湿度" value={stats.humidity.toFixed(1)} suffix="%" highlight="已绑定当前 farmId" icon={<ApiOutlined />} />
+        <StatCard title="光照强度" value={stats.lightLux.toFixed(0)} suffix="Lux" highlight="可用于联动规则" icon={<ApiOutlined />} />
+        <StatCard title="活跃告警" value={String(stats.activeAlerts)} highlight={`${stats.onlineDevices}/${stats.totalDevices} 台设备在线`} icon={<AlertOutlined />} />
+      </div>
 
-        <AppCard className="xl:col-span-2">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-300">运行总览</p>
-              <h3 className="mt-3 text-3xl font-semibold text-slate-900 dark:text-white">
-                {overview.greenhouseCount} 座大棚
-              </h3>
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <AppCard
+          title="当前联调上下文"
+          extra={<Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadData()}>刷新</Button>}
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-[24px] bg-white/60 p-4 dark:bg-white/5">
+              <p className="text-sm text-slate-500 dark:text-slate-300">当前农场</p>
+              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
+                {farms.find((farm) => farm.id === farmId)?.farmName ?? `农场 ${farmId}`}
+              </p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">farmId = {farmId}</p>
             </div>
-            <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white dark:bg-slate-800 dark:text-slate-50">
-              <p className="text-xs opacity-80">在线设备</p>
-              <p className="mt-2 text-2xl font-semibold">
-                {overview.onlineDevices}/{overview.totalDevices}
+            <div className="rounded-[24px] bg-slate-950 p-4 text-white">
+              <p className="text-sm text-slate-400">实时订阅状态</p>
+              <div className="mt-2 flex items-center gap-3">
+                <Tag color={state === "online" ? "green" : state === "connecting" ? "gold" : "red"}>{state}</Tag>
+                <span className="text-sm text-slate-300">握手耗时 {latency} ms</span>
+              </div>
+              <p className="mt-3 text-xs text-slate-400">
+                主题：/topic/farms/{farmId}/telemetry
               </p>
             </div>
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl bg-white/60 p-4 dark:bg-white/5">
-              <p className="text-sm text-slate-500 dark:text-slate-300">CO2</p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">{overview.co2} ppm</p>
+        </AppCard>
+
+        <AppCard title="最新 WebSocket 遥测">
+          {lastMessage ? (
+            <div className="rounded-[24px] bg-emerald-500/10 p-4">
+              <p className="text-sm text-slate-500 dark:text-slate-300">最近一条推送</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900 dark:text-white">
+                设备 {lastMessage.deviceId} / {lastMessage.metricCode} = {lastMessage.metricValue}{lastMessage.unit}
+              </p>
+              <p className="mt-2 text-xs text-slate-500 dark:text-slate-300">{formatDateTime(lastMessage.collectedAt)}</p>
             </div>
-            <div className="rounded-2xl bg-amber-500/10 p-4 dark:bg-amber-500/12">
-              <p className="text-sm text-slate-500 dark:text-slate-300">活跃告警</p>
-              <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-300">{overview.activeAlerts}</p>
-            </div>
-          </div>
+          ) : (
+            <Empty description="等待遥测推送" />
+          )}
         </AppCard>
       </div>
 
-      <div className="grid min-h-0 gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <AppCard
-          title="过去 7 天环境趋势"
-          extra={<Tag color="green">数据持续更新</Tag>}
-          className="min-h-0 overflow-hidden"
-        >
-          <ReactECharts option={chartOption} style={{ height: 280 }} />
+      <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+        <AppCard title="大棚概览数据" className="min-h-0 overflow-hidden">
+          <Table
+            rowKey="greenhouseId"
+            loading={loading}
+            pagination={false}
+            scroll={{ y: 320 }}
+            dataSource={overview}
+            columns={[
+              { title: "大棚", dataIndex: "greenhouseName" },
+              { title: "温度", render: (_, record) => (record.temperature ?? "-") },
+              { title: "湿度", render: (_, record) => (record.humidity ?? "-") },
+              { title: "光照", render: (_, record) => (record.lightLux ?? "-") }
+            ]}
+          />
         </AppCard>
 
-        <AppCard title="多棚状态快照" className="min-h-0 overflow-hidden">
-          <div className="grid h-full grid-cols-1 gap-3">
-            {trendData.greenhouses.map((item) => (
-              <div
-                key={item.id}
-                className="rounded-[24px] border border-slate-200/70 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-base font-semibold text-slate-900 dark:text-white">{item.name}</h4>
-                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">{item.crop}</p>
-                  </div>
-                  <Tag color={item.status === "healthy" ? "green" : "orange"}>
-                    {item.status === "healthy" ? "稳定" : "预警"}
-                  </Tag>
-                </div>
-                <div className="mt-4 grid grid-cols-3 gap-3 text-sm text-slate-600 dark:text-slate-300">
-                  <div>
-                    <p>温度</p>
-                    <p className="mt-1 font-semibold text-slate-900 dark:text-white">{item.temperature}°C</p>
-                  </div>
-                  <div>
-                    <p>湿度</p>
-                    <p className="mt-1 font-semibold text-slate-900 dark:text-white">{item.humidity}%</p>
-                  </div>
-                  <div>
-                    <p>光照</p>
-                    <p className="mt-1 font-semibold text-slate-900 dark:text-white">{item.light} Lux</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+        <AppCard title="最近遥测与告警" className="min-h-0 overflow-hidden">
+          <Table
+            rowKey={(record) => `${record.deviceId}-${record.metricCode}-${record.collectedAt}`}
+            loading={loading}
+            pagination={false}
+            scroll={{ y: 320 }}
+            dataSource={latestTelemetry}
+            columns={[
+              { title: "设备", dataIndex: "deviceId" },
+              { title: "大棚", dataIndex: "greenhouseId" },
+              { title: "指标", dataIndex: "metricCode" },
+              { title: "值", render: (_, record) => `${record.metricValue} ${record.unit}` },
+              { title: "时间", render: (_, record) => formatDateTime(record.collectedAt) }
+            ]}
+          />
+        </AppCard>
+
+        <AppCard title="告警列表" className="min-h-0 overflow-hidden xl:col-span-2">
+          <Table
+            rowKey="id"
+            loading={loading}
+            pagination={false}
+            scroll={{ y: 320 }}
+            dataSource={alerts}
+            columns={[
+              { title: "告警 ID", dataIndex: "id" },
+              { title: "来源", dataIndex: "sourceType" },
+              { title: "标题", dataIndex: "alertTitle" },
+              { title: "级别", render: (_, record) => <Tag color={record.alertLevel === "WARN" ? "orange" : "red"}>{record.alertLevel}</Tag> },
+              { title: "状态", dataIndex: "alertStatus" },
+              { title: "时间", render: (_, record) => formatDateTime(record.lastOccurredAt) },
+              {
+                title: "操作",
+                render: (_, record) => (
+                  <Button
+                    size="small"
+                    disabled={record.alertStatus !== "OPEN"}
+                    loading={closingId === record.id}
+                    onClick={() => void handleCloseAlert(record.id)}
+                  >
+                    关闭
+                  </Button>
+                )
+              }
+            ]}
+          />
         </AppCard>
       </div>
-
-      <AppCard title="今日态势摘要" className="shrink-0">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[24px] bg-gradient-to-br from-emerald-500 to-brand-700 p-5 text-white">
-            <DashboardOutlined className="text-xl" />
-            <h4 className="mt-3 text-xl font-semibold">环境感知稳定</h4>
-            <p className="mt-2 text-sm text-emerald-50">核心传感器已回传，环境指标整体平稳。</p>
-          </div>
-          <div className="rounded-[24px] bg-gradient-to-br from-sky-500 to-accent-600 p-5 text-white">
-            <CloudServerOutlined className="text-xl" />
-            <h4 className="mt-3 text-xl font-semibold">设备在线率较高</h4>
-            <p className="mt-2 text-sm text-sky-50">设备运行状态稳定，可继续进行远程调度。</p>
-          </div>
-          <div className="rounded-[24px] bg-gradient-to-br from-amber-500 to-harvest-600 p-5 text-white">
-            <AlertOutlined className="text-xl" />
-            <h4 className="mt-3 text-xl font-semibold">视觉异常待复核</h4>
-            <p className="mt-2 text-sm text-amber-50">存在 1 条高优先级病害类告警，建议进入视觉中心处理。</p>
-          </div>
-        </div>
-      </AppCard>
     </div>
   );
 }

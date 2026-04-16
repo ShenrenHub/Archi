@@ -1,53 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
-import { Breadcrumb, Button, Drawer, Switch, Tag } from "antd";
+import { Breadcrumb, Button, Drawer, Select, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { fetchCurrentUser } from "@/api/auth";
+import { fetchMyFarms } from "@/api/farm";
 import { appRoutes, getDefaultRoute, getVisibleRoutes } from "@/router/route-map";
 import { useThemeStore } from "@/store/theme";
 import { useUserStore } from "@/store/user";
-import type { Role } from "@/types/common";
+import { roleLabelMap } from "@/types/common";
 
-const roleLabelMap: Record<Role, string> = {
-  farmer: "农户",
-  expert: "农业专家",
-  admin: "管理员"
-};
-
-const roleExperienceMap: Record<
-  Role,
-  { title: string; subtitle: string; badge: string; summary: string; focus: string }
-> = {
+const roleExperienceMap = {
   farmer: {
-    title: "农户作业台",
-    subtitle: "聚焦环境监测、设备控制和农事辅助决策",
-    badge: "农户视图",
-    summary: "当前重点关注环境波动、设备回执与农事建议。",
-    focus: "建议优先查看湿度趋势与视觉告警。"
+    title: "农场作业台",
+    subtitle: "围绕当前农场的设备、遥测和联动规则进行联调",
+    summary: "重点关注当前农场的 farmId、设备在线情况和告警处理。"
   },
   expert: {
-    title: "专家复核台",
-    subtitle: "聚焦视觉复核、异常研判与远程种植建议",
-    badge: "专家视图",
-    summary: "当前重点关注待复核异常与作物病害研判。",
-    focus: "建议优先处理高优先级病斑任务。"
+    title: "专家协作台",
+    subtitle: "聚焦视觉任务结果写回、专家复核与问答历史",
+    summary: "重点关注待复核结果、专家意见和病害研判建议。"
   },
   admin: {
-    title: "农场管理台",
-    subtitle: "聚焦多棚总览、联动策略和设备资产管理",
-    badge: "管理员视图",
-    summary: "当前重点关注策略状态、资产设备和全局告警。",
-    focus: "建议优先处理待接入设备与高等级告警。"
+    title: "平台管理台",
+    subtitle: "管理农场、平台配置、设备资产和接口联调数据",
+    summary: "重点关注农场资产初始化、平台配置和后端联调通路。"
   }
-};
+} as const;
 
 export const AppLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const mode = useThemeStore((state) => state.mode);
   const toggleMode = useThemeStore((state) => state.toggleMode);
-  const role = useUserStore((state) => state.role);
-  const setRole = useUserStore((state) => state.setRole);
+  const {
+    role,
+    farms,
+    farmId,
+    username,
+    displayName,
+    setProfile,
+    setFarms,
+    setFarmId,
+    logout
+  } = useUserStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const visibleRoutes = useMemo(() => getVisibleRoutes(role), [role]);
   const defaultRoute = useMemo(() => getDefaultRoute(role), [role]);
@@ -57,11 +53,17 @@ export const AppLayout = () => {
   }, [mode]);
 
   useEffect(() => {
+    void Promise.all([fetchCurrentUser(), fetchMyFarms().catch(() => [])]).then(([profile, farmsResponse]) => {
+      setProfile(profile);
+      setFarms(farmsResponse);
+    }).catch(() => undefined);
+  }, [setFarms, setProfile]);
+
+  useEffect(() => {
     const currentPath = location.pathname;
     const isAllowed = visibleRoutes.some((route) => route.path === currentPath);
 
     if (currentPath === "/403") {
-      navigate(defaultRoute, { replace: true });
       return;
     }
 
@@ -75,6 +77,7 @@ export const AppLayout = () => {
   }, [location.pathname]);
 
   const selectedKey = location.pathname;
+  const roleExperience = roleExperienceMap[role];
 
   const breadcrumbItems = useMemo(() => {
     const matched = appRoutes.find((item) => item.path === selectedKey);
@@ -84,16 +87,14 @@ export const AppLayout = () => {
     ];
   }, [defaultRoute, selectedKey]);
 
-  const roleExperience = roleExperienceMap[role];
-
   const navContent = (
     <div className="flex h-full flex-col px-4 py-5 text-white">
       <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
         <p className="text-xs uppercase tracking-[0.3em] text-emerald-300/80">Agri Nexus</p>
         <h1 className="mt-3 text-xl font-semibold leading-8 text-white">
-          农业温室大棚
+          智慧温室后端联调
           <br />
-          双模态智能管控平台
+          前端控制台
         </h1>
       </div>
 
@@ -119,10 +120,9 @@ export const AppLayout = () => {
       </nav>
 
       <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-        <p>{roleExperience.badge}</p>
+        <p>{roleLabelMap[role]}</p>
         <p className="mt-2 text-xl font-semibold text-white">{dayjs().format("YYYY-MM-DD HH:mm")}</p>
         <p className="mt-2 text-xs leading-6 text-slate-400">{roleExperience.summary}</p>
-        <p className="mt-2 text-xs leading-6 text-emerald-200/80">{roleExperience.focus}</p>
       </div>
     </div>
   );
@@ -170,24 +170,19 @@ export const AppLayout = () => {
             </div>
 
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:mt-0 lg:justify-end">
-              <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:min-w-[400px]">
-                {(["farmer", "expert", "admin"] as Role[]).map((item) => {
-                  const active = role === item;
-                  return (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setRole(item)}
-                      className={`rounded-2xl border px-4 py-2.5 text-center text-sm font-medium transition ${
-                        active
-                          ? "border-emerald-400/50 bg-emerald-500 text-white shadow-sm dark:border-emerald-300/40 dark:bg-emerald-400 dark:text-slate-950"
-                          : "border-slate-200/80 bg-white/55 text-slate-700 hover:bg-white dark:border-slate-700 dark:bg-slate-950/88 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-slate-900"
-                      }`}
-                    >
-                      <span className="whitespace-nowrap">{roleLabelMap[item]}</span>
-                    </button>
-                  );
-                })}
+              <div className="min-w-[220px]">
+                <Select
+                  className="w-full"
+                  value={farmId ?? undefined}
+                  placeholder="选择农场上下文"
+                  options={farms.map((farm) => ({ label: `${farm.farmName} (${farm.id})`, value: farm.id }))}
+                  onChange={(value) => setFarmId(value)}
+                  allowClear
+                />
+              </div>
+              <div className="rounded-2xl border border-slate-200/80 bg-white/60 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950/88">
+                <div className="font-medium text-slate-900 dark:text-white">{displayName || username}</div>
+                <div className="text-slate-500 dark:text-slate-300">{roleLabelMap[role]}</div>
               </div>
               <Switch
                 checked={mode === "dark"}
@@ -195,6 +190,9 @@ export const AppLayout = () => {
                 unCheckedChildren={<SunOutlined />}
                 onChange={toggleMode}
               />
+              <Button icon={<LogoutOutlined />} onClick={() => logout()}>
+                退出登录
+              </Button>
             </div>
           </header>
 
@@ -206,3 +204,4 @@ export const AppLayout = () => {
     </div>
   );
 };
+
