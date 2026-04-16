@@ -3,29 +3,15 @@ import { Breadcrumb, Button, Drawer, Select, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { fetchCurrentUser } from "@/api/auth";
 import { fetchMyFarms } from "@/api/farm";
 import { appRoutes, getDefaultRoute, getVisibleRoutes } from "@/router/route-map";
 import { useThemeStore } from "@/store/theme";
 import { useUserStore } from "@/store/user";
-import { roleLabelMap } from "@/types/common";
 
-const roleExperienceMap = {
-  farmer: {
-    title: "农场作业台",
-    subtitle: "围绕当前农场的设备、遥测和联动规则进行联调",
-    summary: "重点关注当前农场的 farmId、设备在线情况和告警处理。"
-  },
-  expert: {
-    title: "专家协作台",
-    subtitle: "聚焦视觉任务结果写回、专家复核与问答历史",
-    summary: "重点关注待复核结果、专家意见和病害研判建议。"
-  },
-  admin: {
-    title: "平台管理台",
-    subtitle: "管理农场、平台配置、设备资产和接口联调数据",
-    summary: "重点关注农场资产初始化、平台配置和后端联调通路。"
-  }
+const consoleExperience = {
+  title: "平台联调台",
+  subtitle: "公开演示模式下的农场、设备、遥测与视觉联调控制台",
+  summary: "重点关注当前农场上下文、接口连通性、设备联动和可视化联调结果。"
 } as const;
 
 export const AppLayout = () => {
@@ -33,46 +19,37 @@ export const AppLayout = () => {
   const navigate = useNavigate();
   const mode = useThemeStore((state) => state.mode);
   const toggleMode = useThemeStore((state) => state.toggleMode);
-  const {
-    token,
-    role,
-    farms,
-    farmId,
-    username,
-    displayName,
-    setProfile,
-    setFarms,
-    setFarmId
-  } = useUserStore();
+  const { farms, farmId, username, displayName, setFarms, setFarmId } = useUserStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const visibleRoutes = useMemo(() => getVisibleRoutes(role), [role]);
-  const defaultRoute = useMemo(() => getDefaultRoute(role), [role]);
+  const visibleRoutes = useMemo(() => getVisibleRoutes(), []);
+  const defaultRoute = useMemo(() => getDefaultRoute(), []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", mode === "dark");
   }, [mode]);
 
   useEffect(() => {
-    void Promise.all([
-      token ? fetchCurrentUser().catch(() => null) : Promise.resolve(null),
-      fetchMyFarms().catch(() => [])
-    ])
-      .then(([profile, farmsResponse]) => {
-        if (profile) {
-          setProfile(profile);
+    let cancelled = false;
+
+    void fetchMyFarms()
+      .catch(() => [])
+      .then((farmsResponse) => {
+        if (cancelled) {
+          return;
         }
+
         setFarms(farmsResponse);
       })
       .catch(() => undefined);
-  }, [setFarms, setProfile, token]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setFarms]);
 
   useEffect(() => {
     const currentPath = location.pathname;
     const isAllowed = visibleRoutes.some((route) => route.path === currentPath);
-
-    if (currentPath === "/403") {
-      return;
-    }
 
     if (!isAllowed) {
       navigate(defaultRoute, { replace: true });
@@ -84,13 +61,12 @@ export const AppLayout = () => {
   }, [location.pathname]);
 
   const selectedKey = location.pathname;
-  const roleExperience = roleExperienceMap[role];
 
   const breadcrumbItems = useMemo(() => {
     const matched = appRoutes.find((item) => item.path === selectedKey);
     return [
       { title: <Link to={defaultRoute}>智慧温室</Link> },
-      { title: matched?.label ?? "权限受限" }
+      { title: matched?.label ?? "控制台" }
     ];
   }, [defaultRoute, selectedKey]);
 
@@ -129,9 +105,9 @@ export const AppLayout = () => {
       </nav>
 
       <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-        <p>{roleLabelMap[role]}</p>
+        <p>公开演示模式</p>
         <p className="mt-2 text-xl font-semibold text-white">{dayjs().format("YYYY-MM-DD HH:mm")}</p>
-        <p className="mt-2 text-xs leading-6 text-slate-400">{roleExperience.summary}</p>
+        <p className="mt-2 text-xs leading-6 text-slate-400">{consoleExperience.summary}</p>
       </div>
     </div>
   );
@@ -175,9 +151,9 @@ export const AppLayout = () => {
                   <Breadcrumb items={breadcrumbItems} />
                   <div className="mt-2 flex flex-wrap items-center gap-2 lg:gap-3">
                     <h2 className="text-xl font-semibold text-slate-900 dark:text-white lg:text-2xl">
-                      {roleExperience.title}
+                      {consoleExperience.title}
                     </h2>
-                    <Tag color="green">{roleExperience.subtitle}</Tag>
+                    <Tag color="green">{consoleExperience.subtitle}</Tag>
                   </div>
                 </div>
                 <Button
@@ -201,7 +177,7 @@ export const AppLayout = () => {
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-white/60 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950/88">
                   <div className="font-medium text-slate-900 dark:text-white">{displayName || username}</div>
-                  <div className="text-slate-500 dark:text-slate-300">{token ? roleLabelMap[role] : "免登录体验"}</div>
+                  <div className="text-slate-500 dark:text-slate-300">演示上下文 · 免登录访问</div>
                 </div>
                 <Switch
                   checked={mode === "dark"}

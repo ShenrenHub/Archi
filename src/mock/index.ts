@@ -293,9 +293,9 @@ const removeControlFromDevice = (deviceId: string) => {
 };
 
 export const setupMockAPI = () => {
-  mock.onGet("/dashboard/overview").reply(() => createSuccess(dashboardOverview));
+  mock.onGet("/api/dashboard/overview").reply(() => createSuccess(dashboardOverview));
 
-  mock.onGet("/dashboard/trends").reply(() =>
+  mock.onGet("/api/dashboard/trends").reply(() =>
     createSuccess({
       trends: dashboardTrends,
       greenhouses: greenhouseSnapshots

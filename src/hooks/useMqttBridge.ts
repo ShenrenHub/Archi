@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
+import { apiBaseUrl } from "@/api/request";
 import type { LatestTelemetryItem } from "@/api/telemetry";
 
 type SocketState = "connecting" | "online" | "offline";
 
 const resolveWsUrl = () => {
-  const configuredBase = import.meta.env.VITE_API_BASE_URL || "http://dev.winstonchen.cn:8080";
-
-  const url = new URL(configuredBase);
+  const url = new URL(apiBaseUrl);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = "/ws";
   url.search = "";
@@ -52,55 +51,65 @@ export const useMqttBridge = (farmId?: number | null) => {
       return;
     }
 
-    const startedAt = Date.now();
-    const wsUrl = resolveWsUrl();
-    const socket = new WebSocket(wsUrl);
-    setState("connecting");
+    let destroyed = false;
+    let socket: WebSocket | null = null;
+    const timer = window.setTimeout(() => {
+      if (destroyed) {
+        return;
+      }
 
-    socket.onopen = () => {
-      socket.send(
-        buildFrame("CONNECT", {
-          "accept-version": "1.2",
-          host: new URL(wsUrl).host
-        })
-      );
-    };
+      const startedAt = Date.now();
+      const wsUrl = resolveWsUrl();
+      socket = new WebSocket(wsUrl);
+      setState("connecting");
 
-    socket.onmessage = (event) => {
-      const frames = parseFrames(String(event.data));
+      socket.onopen = () => {
+        socket?.send(
+          buildFrame("CONNECT", {
+            "accept-version": "1.2",
+            host: new URL(wsUrl).host
+          })
+        );
+      };
 
-      frames.forEach((frame) => {
-        if (frame.command === "CONNECTED") {
-          setState("online");
-          setLatency(Date.now() - startedAt);
-          socket.send(
-            buildFrame("SUBSCRIBE", {
-              id: `farm-${farmId}`,
-              destination: `/topic/farms/${farmId}/telemetry`
-            })
-          );
-        }
+      socket.onmessage = (event) => {
+        const frames = parseFrames(String(event.data));
 
-        if (frame.command === "MESSAGE") {
-          try {
-            setLastMessage(JSON.parse(frame.body) as LatestTelemetryItem);
-          } catch {
-            setLastMessage(null);
+        frames.forEach((frame) => {
+          if (frame.command === "CONNECTED") {
+            setState("online");
+            setLatency(Date.now() - startedAt);
+            socket?.send(
+              buildFrame("SUBSCRIBE", {
+                id: `farm-${farmId}`,
+                destination: `/topic/farms/${farmId}/telemetry`
+              })
+            );
           }
-        }
-      });
-    };
 
-    socket.onerror = () => {
-      setState("offline");
-    };
+          if (frame.command === "MESSAGE") {
+            try {
+              setLastMessage(JSON.parse(frame.body) as LatestTelemetryItem);
+            } catch {
+              setLastMessage(null);
+            }
+          }
+        });
+      };
 
-    socket.onclose = () => {
-      setState("offline");
-    };
+      socket.onerror = () => {
+        setState("offline");
+      };
+
+      socket.onclose = () => {
+        setState("offline");
+      };
+    }, 0);
 
     return () => {
-      socket.close();
+      destroyed = true;
+      window.clearTimeout(timer);
+      socket?.close();
     };
   }, [farmId]);
 

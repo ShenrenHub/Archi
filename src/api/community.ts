@@ -1,8 +1,4 @@
-import axios, { AxiosError } from "axios";
-import { message } from "antd";
-
-const communityBaseUrl =
-  import.meta.env.VITE_COMMUNITY_API_BASE_URL || "http://dev.winstonchen.cn:8000/api/v1";
+import { request } from "@/api/request";
 
 export type PostStatus = "open" | "analyzing" | "resolved" | "closed";
 export type AgentType = "community" | "current_data" | "rag" | "historical_data" | "voting_feedback";
@@ -108,59 +104,50 @@ export interface ArchiveFeedbackResponse {
   case_id: number;
 }
 
-export const communityRequest = axios.create({
-  baseURL: communityBaseUrl,
-  timeout: 20000,
-  headers: {
-    "Content-Type": "application/json"
-  }
-});
-
-communityRequest.interceptors.response.use(
-  (response) => response.data,
-  (error: AxiosError<{ detail?: string }>) => {
-    const serverMessage =
-      error.response?.data?.detail || error.message || "社区接口请求失败";
-    message.error(serverMessage);
-    return Promise.reject(error);
-  }
-);
-
 export const listPosts = (skip = 0, limit = 20) =>
-  communityRequest.get<never, PostOut[]>(`/posts?skip=${skip}&limit=${limit}`);
+  request.get<never, PostOut[]>(`/api/community/posts?skip=${skip}&limit=${limit}`);
 
 export const getPost = (postId: number) =>
-  communityRequest.get<never, PostOut>(`/posts/${postId}`);
+  request.get<never, PostOut>(`/api/community/posts/${postId}`);
 
 export const createPost = (payload: PostPayload) =>
-  communityRequest.post<PostPayload, PostOut>("/posts", payload);
+  request.post<PostPayload, PostOut>("/api/community/posts", payload);
 
 export const updatePost = (postId: number, payload: PostPatchPayload) =>
-  communityRequest.patch<PostPatchPayload, PostOut>(`/posts/${postId}`, payload);
+  request.patch<PostPatchPayload, PostOut>(
+    `/api/community/posts/${postId}`,
+    payload
+  );
 
 export const triggerSuggestions = (postId: number) =>
-  communityRequest.post<undefined, SuggestionOut[]>(`/suggestions/trigger/${postId}`);
+  request.post<undefined, SuggestionOut[]>(
+    `/api/community/suggestions/trigger/${postId}`
+  );
 
 export const getSuggestionsByPost = (postId: number) =>
-  communityRequest.get<never, SuggestionOut[]>(`/suggestions/post/${postId}`);
+  request.get<never, SuggestionOut[]>(`/api/community/suggestions/post/${postId}`);
 
 export const createVote = (payload: VotePayload) =>
-  communityRequest.post<VotePayload, VoteOut>("/votes", payload);
+  request.post<VotePayload, VoteOut>("/api/community/votes", payload);
 
 export const getSuggestionVotes = (suggestionId: number) =>
-  communityRequest.get<never, VoteOut[]>(`/votes/suggestion/${suggestionId}`);
+  request.get<never, VoteOut[]>(
+    `/api/community/votes/suggestion/${suggestionId}`
+  );
 
 export const createComment = (payload: CommentPayload) =>
-  communityRequest.post<CommentPayload, CommentOut>("/comments", payload);
+  request.post<CommentPayload, CommentOut>("/api/community/comments", payload);
 
 export const getCommentsByPost = (postId: number) =>
-  communityRequest.get<never, CommentOut[]>(`/comments/post/${postId}`);
+  request.get<never, CommentOut[]>(`/api/community/comments/post/${postId}`);
 
 export const createFeedback = (payload: FeedbackPayload) =>
-  communityRequest.post<FeedbackPayload, FeedbackOut>("/feedback", payload);
+  request.post<FeedbackPayload, FeedbackOut>("/api/community/feedback", payload);
 
 export const getFeedbackByPost = (postId: number) =>
-  communityRequest.get<never, FeedbackOut>(`/feedback/post/${postId}`);
+  request.get<never, FeedbackOut>(`/api/community/feedback/post/${postId}`);
 
 export const archiveFeedback = (feedbackId: number) =>
-  communityRequest.post<undefined, ArchiveFeedbackResponse>(`/feedback/${feedbackId}/archive`);
+  request.post<undefined, ArchiveFeedbackResponse>(
+    `/api/community/feedback/${feedbackId}/archive`
+  );
