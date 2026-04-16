@@ -28,10 +28,10 @@ const STORAGE_KEY = "agri-user-session";
 
 const persistedState = storage.get<PersistedUserState>(STORAGE_KEY, {
   token: "",
-  userId: null,
-  farmId: null,
-  username: "",
-  displayName: "",
+  userId: 0,
+  farmId: 1001,
+  username: "guest",
+  displayName: "访客模式",
   roleCodes: ["FARM_ADMIN"],
   role: "farmer"
 });
@@ -47,7 +47,7 @@ const clearPersisted = () => {
 export const useUserStore = create<UserState>((set) => ({
   ...persistedState,
   farms: [],
-  isAuthenticated: Boolean(persistedState.token),
+  isAuthenticated: true,
   setSession: (payload) => {
     const nextState: PersistedUserState = {
       token: payload.accessToken,
@@ -150,14 +150,14 @@ export const useUserStore = create<UserState>((set) => ({
     clearPersisted();
     set({
       token: "",
-      userId: null,
-      farmId: null,
-      username: "",
-      displayName: "",
+      userId: 0,
+      farmId: 1001,
+      username: "guest",
+      displayName: "访客模式",
       roleCodes: ["FARM_ADMIN"],
       role: "farmer",
       farms: [],
-      isAuthenticated: false
+      isAuthenticated: true
     });
   }
 }));

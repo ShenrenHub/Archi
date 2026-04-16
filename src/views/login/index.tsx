@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Card, Form, Input, Space, Typography } from "antd";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { login, fetchCurrentUser } from "@/api/auth";
 import { fetchMyFarms } from "@/api/farm";
 import { useUserStore } from "@/store/user";
@@ -74,6 +74,13 @@ export default function LoginPage() {
             </Button>
           ))}
         </Space>
+
+        <div className="mt-6 rounded-[20px] bg-slate-950/5 p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+          不想登录也可以直接进入公共社群页：
+          <Link to="/community" className="ml-2 font-medium text-emerald-600">
+            打开耕知社群工作台
+          </Link>
+        </div>
       </Card>
     </div>
   );

@@ -4,11 +4,7 @@ import type { LatestTelemetryItem } from "@/api/telemetry";
 type SocketState = "connecting" | "online" | "offline";
 
 const resolveWsUrl = () => {
-  const configuredBase =
-    import.meta.env.VITE_API_BASE_URL ||
-    (typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "http://localhost:8080"
-      : "https://dev.winstonchen.cn");
+  const configuredBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
 
   const url = new URL(configuredBase);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";

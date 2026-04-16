@@ -5,18 +5,9 @@ import { useUserStore } from "@/store/user";
 import { appRoutes, getDefaultRoute } from "@/router/route-map";
 import { AppLayout } from "@/layout/AppLayout";
 import LoginPage from "@/views/login";
+import CommunityPage from "@/views/community";
+import CommunityPostDetailPage from "@/views/community/post-detail";
 import type { Role } from "@/types/common";
-
-const RequireAuth = ({ children }: { children: JSX.Element }) => {
-  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
-  const location = useLocation();
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
-  }
-
-  return children;
-};
 
 const RoleGuard = ({ roles, children }: { roles: Role[]; children: JSX.Element }) => {
   const role = useUserStore((state) => state.role);
@@ -43,25 +34,15 @@ const ForbiddenPage = () => {
 
 const RoleHomeRedirect = () => {
   const role = useUserStore((state) => state.role);
-  const isAuthenticated = useUserStore((state) => state.isAuthenticated);
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
   return <Navigate to={getDefaultRoute(role)} replace />;
 };
 
 export const AppRouter = () => (
   <Routes>
+    <Route path="/community" element={<CommunityPage />} />
+    <Route path="/community/posts/:postId" element={<CommunityPostDetailPage />} />
     <Route path="/login" element={<LoginPage />} />
-    <Route
-      element={
-        <RequireAuth>
-          <AppLayout />
-        </RequireAuth>
-      }
-    >
+    <Route element={<AppLayout />}>
       <Route path="/" element={<RoleHomeRedirect />} />
       {appRoutes.map((route) => (
         <Route

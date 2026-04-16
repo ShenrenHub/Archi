@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Breadcrumb, Button, Drawer, Select, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { LogoutOutlined, MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fetchCurrentUser } from "@/api/auth";
 import { fetchMyFarms } from "@/api/farm";
@@ -34,6 +34,7 @@ export const AppLayout = () => {
   const mode = useThemeStore((state) => state.mode);
   const toggleMode = useThemeStore((state) => state.toggleMode);
   const {
+    token,
     role,
     farms,
     farmId,
@@ -41,8 +42,7 @@ export const AppLayout = () => {
     displayName,
     setProfile,
     setFarms,
-    setFarmId,
-    logout
+    setFarmId
   } = useUserStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const visibleRoutes = useMemo(() => getVisibleRoutes(role), [role]);
@@ -53,11 +53,18 @@ export const AppLayout = () => {
   }, [mode]);
 
   useEffect(() => {
-    void Promise.all([fetchCurrentUser(), fetchMyFarms().catch(() => [])]).then(([profile, farmsResponse]) => {
-      setProfile(profile);
-      setFarms(farmsResponse);
-    }).catch(() => undefined);
-  }, [setFarms, setProfile]);
+    void Promise.all([
+      token ? fetchCurrentUser().catch(() => null) : Promise.resolve(null),
+      fetchMyFarms().catch(() => [])
+    ])
+      .then(([profile, farmsResponse]) => {
+        if (profile) {
+          setProfile(profile);
+        }
+        setFarms(farmsResponse);
+      })
+      .catch(() => undefined);
+  }, [setFarms, setProfile, token]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -194,7 +201,7 @@ export const AppLayout = () => {
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-white/60 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950/88">
                   <div className="font-medium text-slate-900 dark:text-white">{displayName || username}</div>
-                  <div className="text-slate-500 dark:text-slate-300">{roleLabelMap[role]}</div>
+                  <div className="text-slate-500 dark:text-slate-300">{token ? roleLabelMap[role] : "免登录体验"}</div>
                 </div>
                 <Switch
                   checked={mode === "dark"}
@@ -202,9 +209,6 @@ export const AppLayout = () => {
                   unCheckedChildren={<SunOutlined />}
                   onChange={toggleMode}
                 />
-                <Button icon={<LogoutOutlined />} onClick={() => logout()}>
-                  退出登录
-                </Button>
               </div>
             </header>
           )}
