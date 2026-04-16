@@ -6,11 +6,13 @@ import {
   CameraOutlined,
   CloudUploadOutlined,
   ControlOutlined,
+  DatabaseOutlined,
   EyeOutlined,
   RobotOutlined,
   SafetyOutlined
 } from "@ant-design/icons";
 import type { Role } from "@/types/common";
+import SmartDataCenterPage from "@/views/smart-data-center";
 import DashboardPage from "@/views/dashboard";
 import DeviceControlPage from "@/views/device-control";
 import StrategyPage from "@/views/strategy";
@@ -29,6 +31,13 @@ export interface AppRouteItem {
 }
 
 export const appRoutes: AppRouteItem[] = [
+  {
+    path: "/smart-data-center",
+    label: "智慧数据中心",
+    icon: <DatabaseOutlined />,
+    roles: ["farmer", "expert", "admin"],
+    element: <SmartDataCenterPage />
+  },
   {
     path: "/dashboard",
     label: "数据驾驶舱",
@@ -90,8 +99,16 @@ export const appRoutes: AppRouteItem[] = [
 export const getVisibleRoutes = (role: Role) =>
   appRoutes.filter((route) => route.roles.includes(role));
 
+const defaultRouteMap: Record<Role, string> = {
+  farmer: "/dashboard",
+  expert: "/vision",
+  admin: "/dashboard"
+};
+
 export const getDefaultRoute = (role: Role) =>
-  getVisibleRoutes(role)[0]?.path ?? "/403";
+  getVisibleRoutes(role).find((route) => route.path === defaultRouteMap[role])?.path ??
+  getVisibleRoutes(role)[0]?.path ??
+  "/403";
 
 export const fallbackRoute = {
   path: "/403",

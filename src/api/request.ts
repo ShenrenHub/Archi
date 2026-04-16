@@ -3,11 +3,7 @@ import { message } from "antd";
 import { useUserStore } from "@/store/user";
 import type { ApiResponse } from "@/types/common";
 
-const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:8080"
-    : "https://dev.winstonchen.cn");
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export const request = axios.create({
   baseURL: apiBaseUrl,
@@ -27,10 +23,17 @@ request.interceptors.request.use((config) => {
 
 request.interceptors.response.use(
   ((response: AxiosResponse) => {
-    const payload = response.data as ApiResponse<unknown>;
+    const payload = response.data as ApiResponse<unknown> | unknown;
 
-    if (!payload.success || payload.code !== "OK") {
-      if (payload.code === "A0401") {
+    if (!isWrappedResponse(payload)) {
+      return payload;
+    }
+
+    const success =
+      payload.success === true || payload.code === 0 || payload.code === "OK";
+
+    if (!success) {
+      if (payload.code === "A0401" || payload.code === 401) {
         useUserStore.getState().logout();
       }
 
@@ -52,3 +55,12 @@ request.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+function isWrappedResponse(payload: unknown): payload is ApiResponse<unknown> {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "data" in payload &&
+    ("success" in payload || "code" in payload)
+  );
+}

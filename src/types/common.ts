@@ -5,9 +5,9 @@ export type ThemeMode = "light" | "dark";
 export type BackendRoleCode = "SYSTEM_ADMIN" | "FARM_ADMIN" | "EXPERT";
 
 export interface ApiResponse<T> {
-  success: boolean;
-  code: string;
-  message: string;
+  success?: boolean;
+  code?: number | string;
+  message?: string;
   data: T;
 }
 

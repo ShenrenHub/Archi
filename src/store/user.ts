@@ -20,6 +20,7 @@ interface UserState extends PersistedUserState {
   setProfile: (profile: UserProfile) => void;
   setFarms: (farms: FarmSummary[]) => void;
   setFarmId: (farmId: number | null) => void;
+  setRole: (role: Role) => void;
   logout: () => void;
 }
 
@@ -125,6 +126,24 @@ export const useUserStore = create<UserState>((set) => ({
 
       return {
         farmId
+      };
+    }),
+  setRole: (role) =>
+    set((state) => {
+      const nextState: PersistedUserState = {
+        token: state.token,
+        userId: state.userId,
+        farmId: state.farmId,
+        username: state.username,
+        displayName: state.displayName,
+        roleCodes: state.roleCodes,
+        role
+      };
+
+      persist(nextState);
+
+      return {
+        role
       };
     }),
   logout: () => {
