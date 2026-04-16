@@ -19,7 +19,7 @@ export default defineConfig({
         changeOrigin: true
       },
       "/ws": {
-        target: "https://argri.syan.wang",
+        target: "https://argri.syan.wang/",
         changeOrigin: true,
         ws: true
       }

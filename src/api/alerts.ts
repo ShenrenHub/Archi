@@ -16,8 +16,22 @@ export interface CloseAlertPayload {
   closeRemark: string;
 }
 
-export const fetchAlerts = (farmId: number) =>
-  request.get<never, AlertItem[]>(`/api/alerts?farmId=${farmId}`);
+interface FetchAlertsOptions {
+  limit?: number;
+}
+
+export const fetchAlerts = (farmId: number, options: FetchAlertsOptions = {}) => {
+  const searchParams = new URLSearchParams({ farmId: String(farmId) });
+
+  if (options.limit) {
+    searchParams.set("limit", String(options.limit));
+  }
+
+  return request.get<never, AlertItem[]>(`/api/alerts?${searchParams.toString()}`);
+};
+
+export const fetchOpenAlertCount = (farmId: number) =>
+  request.get<never, number>(`/api/alerts/open-count?farmId=${farmId}`);
 
 export const closeAlert = (payload: CloseAlertPayload) =>
   request.patch<CloseAlertPayload, null>("/api/alerts/close", payload);

@@ -82,18 +82,13 @@ export default function CommunityPage() {
             <div className="max-w-4xl">
               <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
                 <span className="rounded-full border border-emerald-200 bg-white/78 px-4 py-1.5 text-emerald-800">
-                  耕知社群 · Public Journal
+                  耕知社群 · 农业问题交流平台
                 </span>
-                <span>无需登录即可阅读、发帖与继续讨论</span>
+                <span>集思广益，和同行、专家、Agent们讨论你的问题</span>
               </div>
-              <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl lg:text-[4.1rem] lg:leading-[1.04]">
-                像正式博客一样
-                <br />
-                阅读每一篇农业问题帖
+              <h1 className="mt-6 max-w-3xl text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl lg:text-[3.5rem] lg:leading-[1.04]">
+                和大家聊聊你的问题吧！
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600">
-                首页只保留更松弛的文章浏览体验，进入帖子后再展开 Agent 建议、评论、执行反馈与案例沉淀，让阅读路径更自然。
-              </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Button
                   size="large"
@@ -150,7 +145,7 @@ export default function CommunityPage() {
               <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_320px]">
                 <div>
                   <p className="text-xs uppercase tracking-[0.28em] text-slate-500">本周专题</p>
-                  <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight text-slate-950 sm:text-[2.7rem]">
+                  <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight text-slate-950 sm:text-[1.5rem]">
                     {featuredPost.title}
                   </h2>
                   <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -175,7 +170,7 @@ export default function CommunityPage() {
                   </div>
                 </div>
 
-                <div className="rounded-[28px] border border-slate-200/80 bg-white/72 p-6">
+                <div className="rounded-[24px] border border-slate-200/80 bg-white/72 p-6">
                   <p className="text-xs uppercase tracking-[0.24em] text-slate-500">文摘信息</p>
                   <div className="mt-5 space-y-4 text-sm leading-7 text-slate-600">
                     <div className="flex items-center justify-between">

@@ -243,7 +243,7 @@ export default function CommunityPostDetailPage() {
         ) : selectedPost ? (
           <>
             <article className="community-surface overflow-hidden rounded-[40px] border border-white/60 px-6 py-9 sm:px-10 lg:px-14 lg:py-14">
-              <div className="mx-auto max-w-[820px]">
+              <div className="max-w-[820px]">
                 <div className="flex flex-wrap items-center gap-2">
                   <Tag color={statusColorMap[selectedPost.status]}>{statusLabelMap[selectedPost.status]}</Tag>
                   <Tag>{selectedPost.crop_type}</Tag>
@@ -252,8 +252,8 @@ export default function CommunityPostDetailPage() {
                     作者 #{selectedPost.author_id} · {readingMinutes(selectedPost.description)} 分钟阅读
                   </span>
                 </div>
-                <p className="mt-6 text-xs uppercase tracking-[0.28em] text-slate-500">Community Post</p>
-                <h1 className="mt-4 text-4xl font-semibold leading-tight text-slate-950 sm:text-5xl">
+                <p className="mt-6 text-s uppercase tracking-[0.28em] text-slate-500">我的问题是：</p>
+                <h1 className="mt-4 text-4xl font-semibold leading-tight text-slate-950 sm:text-4xl">
                   {selectedPost.title}
                 </h1>
                 <p className="mt-8 text-lg leading-9 text-slate-700">{selectedPost.description}</p>
@@ -292,7 +292,7 @@ export default function CommunityPostDetailPage() {
 
                   <div className="mt-6">
                     <Button icon={<ThunderboltOutlined />} loading={triggeringSuggestions} className="community-primary-btn" onClick={() => void runSuggestions()}>
-                      触发 5 个 Agent
+                      让Agents帮帮忙？
                     </Button>
                   </div>
 
@@ -344,7 +344,7 @@ export default function CommunityPostDetailPage() {
                           </div>
                           <p className="mt-4 text-sm leading-7 text-slate-700">{excerpt(suggestion.content, 160)}</p>
                           <div className="mt-5 flex flex-wrap gap-3">
-                            <Button className="community-primary-btn" onClick={() => void submitVote(suggestion.id)}>投票</Button>
+                            <Button className="community-primary-btn" onClick={() => void submitVote(suggestion.id)}>赞成</Button>
                             <Button icon={<EyeOutlined />} className="community-secondary-btn" onClick={() => void openVotes(suggestion.id)}>明细</Button>
                           </div>
                         </article>

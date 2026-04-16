@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Breadcrumb, Button, Drawer, Select, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { ExportOutlined, MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import gengzhiMark from "@/assets/gengzhi-mark.svg";
 import { fetchMyFarms } from "@/api/farm";
 import { appRoutes, getDefaultRoute, getVisibleRoutes } from "@/router/route-map";
 import { useThemeStore } from "@/store/theme";
@@ -10,9 +11,11 @@ import { useUserStore } from "@/store/user";
 
 const consoleExperience = {
   title: "平台联调台",
-  subtitle: "公开演示模式下的农场、设备、遥测与视觉联调控制台",
-  summary: "重点关注当前农场上下文、接口连通性、设备联动和可视化联调结果。"
+  subtitle: "公开演示模式下的农场、设备、遥测与视觉联调控制台"
 } as const;
+
+const GENGZHI_URL =
+  import.meta.env.VITE_GENGZHI_URL || "http://175.178.11.192:6001/community";
 
 export const AppLayout = () => {
   const location = useLocation();
@@ -21,6 +24,7 @@ export const AppLayout = () => {
   const toggleMode = useThemeStore((state) => state.toggleMode);
   const { farms, farmId, username, displayName, setFarms, setFarmId } = useUserStore();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [now, setNow] = useState(() => dayjs());
   const visibleRoutes = useMemo(() => getVisibleRoutes(), []);
   const defaultRoute = useMemo(() => getDefaultRoute(), []);
 
@@ -59,6 +63,16 @@ export const AppLayout = () => {
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNow(dayjs());
+    }, 30000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
 
   const selectedKey = location.pathname;
 
@@ -104,10 +118,34 @@ export const AppLayout = () => {
         })}
       </nav>
 
-      <div className="rounded-[24px] border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
-        <p>公开演示模式</p>
-        <p className="mt-2 text-xl font-semibold text-white">{dayjs().format("YYYY-MM-DD HH:mm")}</p>
-        <p className="mt-2 text-xs leading-6 text-slate-400">{consoleExperience.summary}</p>
+      <div className="mt-6 space-y-3">
+        <a
+          href={GENGZHI_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="group block rounded-[24px] border border-emerald-400/16 bg-[linear-gradient(135deg,rgba(6,95,70,0.34),rgba(15,23,42,0.92)_52%,rgba(4,18,20,0.94))] p-4 shadow-[0_18px_48px_rgba(2,6,23,0.26)] transition hover:-translate-y-0.5 hover:border-emerald-300/30 hover:shadow-[0_22px_54px_rgba(2,6,23,0.34)]"
+        >
+          <div className="grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-3">
+            <img
+              src={gengzhiMark}
+              alt="耕知"
+              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/10 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+            />
+            <div className="min-w-0 text-center">
+              <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/68">Forum</p>
+              <p className="mt-1 text-base font-semibold text-white">耕知</p>
+              {/* <p className="mt-1 text-xs text-slate-300">跟大家聊聊吧</p> */}
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-base text-emerald-200/88 transition group-hover:border-emerald-300/24 group-hover:bg-emerald-400/10 group-hover:text-white">
+              <ExportOutlined />
+            </div>
+          </div>
+        </a>
+
+        {/* <div className="rounded-[24px] border border-white/10 bg-white/5 text-sm">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">当前时间</p>
+          <p className="mt-2 text-xl font-semibold text-white">{now.format("YYYY-MM-DD HH:mm")}</p>
+        </div> */}
       </div>
     </div>
   );

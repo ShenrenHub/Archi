@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_SMARTJAVAAI_BASE_URL?: string;
+  readonly VITE_GENGZHI_URL?: string;
 }
 
 interface ImportMeta {

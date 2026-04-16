@@ -27,7 +27,7 @@ export default function VisionPage() {
     const [greenhouseResponse, cameraResponse, alertResponse] = await Promise.all([
       fetchGreenhouses(farmId),
       fetchCameras(farmId),
-      fetchAlerts(farmId)
+      fetchAlerts(farmId, { limit: 100 })
     ]);
 
     setGreenhouses(greenhouseResponse);
@@ -143,5 +143,4 @@ export default function VisionPage() {
     </div>
   );
 }
-
 

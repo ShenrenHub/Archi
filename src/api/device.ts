@@ -1,7 +1,7 @@
 import { request } from "@/api/request";
 
 export interface DeviceItem {
-  id: number;
+  id: string;
   farmId: number;
   greenhouseId: number | null;
   deviceCode: string;
@@ -22,7 +22,7 @@ export interface RegisterDevicePayload {
 
 export interface BindDevicePayload {
   farmId: number;
-  deviceId: number;
+  deviceId: string;
   greenhouseId: number;
 }
 

@@ -3,15 +3,15 @@ import { request } from "@/api/request";
 export interface CreateCommandPayload {
   farmId: number;
   greenhouseId: number;
-  deviceId: number;
+  deviceId: string;
   idempotencyKey: string;
   commandCode: string;
   commandPayload: string;
 }
 
 export interface CommandItem {
-  id: number;
-  deviceId: number;
+  id: string;
+  deviceId: string;
   commandCode: string;
   commandStatus: string;
   requestedAt: string;
@@ -20,8 +20,8 @@ export interface CommandItem {
 
 export interface ReceiptPayload {
   farmId: number;
-  commandId: number;
-  deviceId: number;
+  commandId: string;
+  deviceId: string;
   resultCode: string;
   resultMessage: string;
   rawPayload: string;

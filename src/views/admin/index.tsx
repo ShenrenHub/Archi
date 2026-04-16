@@ -152,14 +152,16 @@ export default function AdminPage() {
                     bindForm.setFieldsValue({ farmId: farmId ?? undefined });
                   })} initialValues={{ farmId: farmId ?? undefined }}>
                     <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
-                    <Form.Item label="设备 ID" name="deviceId" rules={[{ required: true }]}><InputNumber className="!w-full" /></Form.Item>
+                    <Form.Item label="设备" name="deviceId" rules={[{ required: true }]}>
+                      <Select options={devices.map((item) => ({ label: `${item.deviceName} / ${item.deviceCode}`, value: item.id }))} />
+                    </Form.Item>
                     <Form.Item label="目标大棚" name="greenhouseId" rules={[{ required: true }]}><Select options={greenhouses.map((item) => ({ label: `${item.greenhouseName} (${item.id})`, value: item.id }))} /></Form.Item>
                     <Button htmlType="submit" loading={submitting === "bind"}>绑定设备</Button>
                   </Form>
                 </AppCard>
 
                 <AppCard title="设备列表">
-                  <Table rowKey="id" dataSource={devices} pagination={false} scroll={{ y: 420 }} columns={[{ title: "设备 ID", dataIndex: "id" }, { title: "名称", dataIndex: "deviceName" }, { title: "编码", dataIndex: "deviceCode" }, { title: "大棚", dataIndex: "greenhouseId" }, { title: "协议", dataIndex: "protocolType" }, { title: "在线状态", dataIndex: "onlineStatus" }]} />
+                  <Table rowKey="id" dataSource={devices} pagination={false} scroll={{ y: 420 }} columns={[{ title: "名称", dataIndex: "deviceName" }, { title: "编码", dataIndex: "deviceCode" }, { title: "大棚", dataIndex: "greenhouseId" }, { title: "协议", dataIndex: "protocolType" }, { title: "在线状态", dataIndex: "onlineStatus" }]} />
                 </AppCard>
               </div>
             )
@@ -194,5 +196,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-

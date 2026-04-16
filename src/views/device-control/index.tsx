@@ -1,44 +1,91 @@
-import { useCallback, useEffect, useState } from "react";
-import { Button, Empty, Form, Input, InputNumber, Select, Table } from "antd";
-import { ReloadOutlined, SendOutlined } from "@ant-design/icons";
-import { createCommand, fetchCommands, submitReceipt, type CommandItem, type CreateCommandPayload, type ReceiptPayload } from "@/api/control";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { App, Button, Collapse, Empty, Form, Input, InputNumber, Select, Switch, Tag } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
+import { createCommand, fetchCommands, type CommandItem } from "@/api/control";
 import { fetchDevices, type DeviceItem } from "@/api/device";
 import { fetchGreenhouses, type GreenhouseItem } from "@/api/farm";
+import { createRule, fetchRules, type CreateRulePayload, type RuleItem } from "@/api/strategy";
+import { fetchDeviceSnapshots, type DeviceSnapshotItem } from "@/api/telemetry";
 import { AppCard } from "@/components/common/AppCard";
-import { MqttStatusLight } from "@/components/device/MqttStatusLight";
-import { useMqttBridge } from "@/hooks/useMqttBridge";
 import { useUserStore } from "@/store/user";
-import { formatDateTime } from "@/utils/time";
+import {
+  CONTROL_DEVICE_CATALOG,
+  findDeviceAction,
+  type ControlDeviceDefinition,
+  type DeviceActionState
+} from "./device-catalog";
+
+const ruleStatusLabelMap = {
+  ENABLED: "启用中",
+  DISABLED: "已停用"
+} as const;
+
+const readLightState = (snapshot: Record<string, unknown> | undefined): DeviceActionState | undefined => {
+  const rawValue = snapshot?.lightStatus ?? snapshot?.LightStatus;
+  if (typeof rawValue !== "string") {
+    return undefined;
+  }
+
+  if (rawValue.toUpperCase() === "ON") {
+    return "ON";
+  }
+  if (rawValue.toUpperCase() === "OFF") {
+    return "OFF";
+  }
+  return undefined;
+};
+
+const readErrorMessage = (error: unknown) =>
+  error instanceof Error && error.message ? error.message : "操作失败，请稍后重试。";
+
+interface RuntimeCatalogDevice {
+  definition: ControlDeviceDefinition;
+  device?: DeviceItem;
+  snapshot?: DeviceSnapshotItem;
+  lastCommand?: CommandItem;
+  greenhouseName?: string;
+}
 
 export default function DeviceControlPage() {
+  const { message } = App.useApp();
   const farmId = useUserStore((state) => state.farmId);
   const [devices, setDevices] = useState<DeviceItem[]>([]);
   const [greenhouses, setGreenhouses] = useState<GreenhouseItem[]>([]);
+  const [snapshots, setSnapshots] = useState<DeviceSnapshotItem[]>([]);
   const [commands, setCommands] = useState<CommandItem[]>([]);
-  const [commandLoading, setCommandLoading] = useState(false);
-  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [rules, setRules] = useState<RuleItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [commandForm] = Form.useForm<CreateCommandPayload>();
-  const [receiptForm] = Form.useForm<ReceiptPayload>();
-  const { state, latency } = useMqttBridge(farmId);
+  const [ruleSubmitting, setRuleSubmitting] = useState(false);
+  const [activeDeviceKey, setActiveDeviceKey] = useState<string>();
+  const [pendingLightStates, setPendingLightStates] = useState<Record<string, DeviceActionState>>({});
+  const [ruleForm] = Form.useForm<CreateRulePayload>();
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (showRefreshing = true) => {
     if (!farmId) {
       return;
     }
 
-    setRefreshing(true);
+    if (showRefreshing) {
+      setRefreshing(true);
+    }
+
     try {
-      const [deviceResponse, commandResponse, greenhouseResponse] = await Promise.all([
+      const [deviceResponse, commandResponse, greenhouseResponse, ruleResponse, snapshotResponse] = await Promise.all([
         fetchDevices(farmId),
         fetchCommands(farmId),
-        fetchGreenhouses(farmId)
+        fetchGreenhouses(farmId),
+        fetchRules(farmId),
+        fetchDeviceSnapshots(farmId)
       ]);
       setDevices(deviceResponse);
       setCommands(commandResponse);
       setGreenhouses(greenhouseResponse);
+      setRules(ruleResponse);
+      setSnapshots(snapshotResponse);
     } finally {
-      setRefreshing(false);
+      if (showRefreshing) {
+        setRefreshing(false);
+      }
     }
   }, [farmId]);
 
@@ -46,154 +93,282 @@ export default function DeviceControlPage() {
     void loadData();
   }, [loadData]);
 
-  const handleCreateCommand = async (values: CreateCommandPayload) => {
-    setCommandLoading(true);
-    try {
-      await createCommand(values);
-      commandForm.setFieldsValue({
-        ...values,
-        idempotencyKey: `cmd-${Date.now()}`
-      });
-      await loadData();
-    } finally {
-      setCommandLoading(false);
+  useEffect(() => {
+    if (!farmId) {
+      return;
     }
-  };
+    ruleForm.setFieldsValue({
+      farmId,
+      triggerType: "THRESHOLD",
+      debounceSeconds: 60
+    });
+  }, [farmId, ruleForm]);
 
-  const handleQuickCommand = async (device: DeviceItem, commandCode: string) => {
-    if (!farmId || !device.greenhouseId) {
+  useEffect(() => {
+    if (!farmId) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void loadData(false);
+    }, 4000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [farmId, loadData]);
+
+  const greenhouseNameById = useMemo(
+    () => new Map(greenhouses.map((item) => [item.id, item.greenhouseName])),
+    [greenhouses]
+  );
+
+  const deviceByCode = useMemo(
+    () => new Map(devices.map((item) => [item.deviceCode, item])),
+    [devices]
+  );
+
+  const snapshotByDeviceId = useMemo(
+    () => new Map(snapshots.map((item) => [item.deviceId, item])),
+    [snapshots]
+  );
+
+  const catalogDevices = useMemo<RuntimeCatalogDevice[]>(
+    () =>
+      CONTROL_DEVICE_CATALOG.map((definition) => {
+        const device = deviceByCode.get(definition.deviceCode);
+        const snapshot = device ? snapshotByDeviceId.get(device.id) : undefined;
+        return {
+          definition,
+          device,
+          snapshot,
+          lastCommand: device ? commands.find((command) => command.deviceId === device.id) : undefined,
+          greenhouseName: device?.greenhouseId ? greenhouseNameById.get(device.greenhouseId) : undefined
+        };
+      }),
+    [commands, deviceByCode, greenhouseNameById, snapshotByDeviceId]
+  );
+
+  useEffect(() => {
+    setPendingLightStates((current) => {
+      const nextState = { ...current };
+      let changed = false;
+
+      catalogDevices.forEach((item) => {
+        const pendingState = current[item.definition.deviceCode];
+        if (!pendingState) {
+          return;
+        }
+
+        const actualState = readLightState(item.snapshot?.snapshot);
+        if (actualState === pendingState || item.lastCommand?.commandStatus === "FAILED") {
+          delete nextState[item.definition.deviceCode];
+          changed = true;
+        }
+      });
+
+      return changed ? nextState : current;
+    });
+  }, [catalogDevices]);
+
+  const handleToggleLight = async (runtimeDevice: RuntimeCatalogDevice, checked: boolean) => {
+    if (!farmId || !runtimeDevice.device?.greenhouseId) {
+      message.warning("设备还未完成注册或绑定大棚，暂时不能下发灯控命令。");
       return;
     }
 
-    await handleCreateCommand({
-      farmId,
-      greenhouseId: device.greenhouseId,
-      deviceId: device.id,
-      idempotencyKey: `cmd-${device.id}-${Date.now()}`,
-      commandCode,
-      commandPayload: "{}"
-    });
+    const targetState: DeviceActionState = checked ? "ON" : "OFF";
+    const action = findDeviceAction(runtimeDevice.definition, targetState);
+    if (!action) {
+      message.error("当前设备未配置该控制动作。");
+      return;
+    }
+
+    setActiveDeviceKey(runtimeDevice.definition.key);
+    setPendingLightStates((current) => ({
+      ...current,
+      [runtimeDevice.definition.deviceCode]: targetState
+    }));
+
+    try {
+      await createCommand({
+        farmId,
+        greenhouseId: runtimeDevice.device.greenhouseId,
+        deviceId: runtimeDevice.device.id,
+        idempotencyKey: `cmd-${runtimeDevice.device.id}-${Date.now()}`,
+        commandCode: action.commandCode,
+        commandPayload: action.buildPayload()
+      });
+      message.success(`${runtimeDevice.definition.name}${action.label}命令已下发。`);
+      await loadData(false);
+    } catch (error) {
+      setPendingLightStates((current) => {
+        const nextState = { ...current };
+        delete nextState[runtimeDevice.definition.deviceCode];
+        return nextState;
+      });
+      message.error(readErrorMessage(error));
+    } finally {
+      setActiveDeviceKey(undefined);
+    }
   };
 
-  const handleSubmitReceipt = async (values: ReceiptPayload) => {
-    setReceiptLoading(true);
+  const handleSubmitRule = async (values: CreateRulePayload) => {
+    setRuleSubmitting(true);
     try {
-      await submitReceipt(values);
-      receiptForm.resetFields();
-      await loadData();
+      await createRule(values);
+      message.success("联动规则已保存。");
+      ruleForm.resetFields();
+      ruleForm.setFieldsValue({
+        farmId: farmId ?? undefined,
+        triggerType: "THRESHOLD",
+        debounceSeconds: 60
+      });
+      await loadData(false);
+    } catch (error) {
+      message.error(readErrorMessage(error));
     } finally {
-      setReceiptLoading(false);
+      setRuleSubmitting(false);
     }
   };
 
   if (!farmId) {
-    return <Empty description="请选择农场后再下发控制命令。" />;
+    return <Empty description="请选择农场后再进入控制命令中心。" />;
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-      <div className="space-y-4">
-        <AppCard title="控制链路状态" extra={<Button icon={<ReloadOutlined />} loading={refreshing} onClick={() => void loadData()}>刷新</Button>}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <h3 className="text-2xl font-semibold text-slate-900 dark:text-white">JWT + 控制命令联调</h3>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                当前页面对接 `/api/control/commands`、`/api/control/receipts` 和 `/api/devices`。
-              </p>
-              <div className="mt-4"><MqttStatusLight state={state} latency={latency} /></div>
-            </div>
-            <div className="rounded-[24px] bg-slate-950 p-5 text-white">
-              <p className="text-sm text-slate-400">当前 farmId</p>
-              <p className="mt-3 text-4xl font-semibold">{farmId}</p>
-              <p className="mt-3 text-sm text-slate-300">可用设备 {devices.length} 台，命令记录 {commands.length} 条。</p>
-            </div>
-          </div>
-        </AppCard>
+    <div className="space-y-4">
+      <AppCard
+        title="设备控制"
+        extra={
+          <Button icon={<ReloadOutlined />} loading={refreshing} onClick={() => void loadData()}>
+            刷新
+          </Button>
+        }
+      >
+        <div className="grid gap-3">
+          {catalogDevices.map((item) => {
+            const snapshot = item.snapshot?.snapshot;
+            const snapshotLightState = readLightState(snapshot);
+            const lightState = pendingLightStates[item.definition.deviceCode]
+              ?? snapshotLightState
+              ?? (item.lastCommand?.commandCode === "LIGHT_ON" ? "ON" : "OFF");
+            const canControl = Boolean(item.device?.greenhouseId);
+            const statusText = item.device
+              ? item.device.onlineStatus === "ONLINE"
+                ? "在线"
+                : "等待心跳"
+              : "未接入";
 
-        <AppCard title="设备清单与快捷控制" className="min-h-0 overflow-hidden">
-          <Table
-            rowKey="id"
-            dataSource={devices}
-            pagination={false}
-            scroll={{ y: 360 }}
-            columns={[
-              { title: "设备", dataIndex: "deviceName" },
-              { title: "编码", dataIndex: "deviceCode" },
-              { title: "协议", dataIndex: "protocolType" },
-              { title: "状态", dataIndex: "onlineStatus" },
-              {
-                title: "快捷操作",
-                render: (_, record) => (
-                  <div className="flex gap-2">
-                    <Button size="small" onClick={() => void handleQuickCommand(record, "TURN_ON")} disabled={!record.greenhouseId}>开启</Button>
-                    <Button size="small" onClick={() => void handleQuickCommand(record, "TURN_OFF")} disabled={!record.greenhouseId}>关闭</Button>
+            return (
+              <div
+                key={item.definition.key}
+                className="flex flex-col gap-4 rounded-[24px] border border-slate-200/80 bg-white/72 p-4 dark:border-white/8 dark:bg-slate-950/60 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-semibold text-slate-950 dark:text-white">
+                      {item.definition.name}
+                    </h3>
+                    <Tag color={item.device?.onlineStatus === "ONLINE" ? "green" : "default"}>
+                      {statusText}
+                    </Tag>
                   </div>
-                )
-              }
-            ]}
-          />
-        </AppCard>
-      </div>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                    {item.greenhouseName ?? item.definition.deviceCode}
+                  </p>
+                  {!canControl ? (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">
+                      设备未绑定到大棚，暂时不可控制。
+                    </p>
+                  ) : null}
+                </div>
 
-      <div className="space-y-4">
-        <AppCard title="下发控制命令">
-          <Form
-            form={commandForm}
-            layout="vertical"
-            onFinish={(values) => void handleCreateCommand(values)}
-            initialValues={{ farmId, commandCode: "TURN_ON", commandPayload: "{}", idempotencyKey: `cmd-${Date.now()}` }}
-          >
-            <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
-            <Form.Item label="目标大棚" name="greenhouseId" rules={[{ required: true, message: "请选择大棚" }]}>
-              <Select options={greenhouses.map((item) => ({ label: `${item.greenhouseName} (${item.id})`, value: item.id }))} />
-            </Form.Item>
-            <Form.Item label="目标设备" name="deviceId" rules={[{ required: true, message: "请选择设备" }]}>
-              <Select options={devices.map((item) => ({ label: `${item.deviceName} (${item.id})`, value: item.id }))} />
-            </Form.Item>
-            <Form.Item label="幂等键" name="idempotencyKey" rules={[{ required: true }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="命令码" name="commandCode" rules={[{ required: true }]}>
-              <Select options={["TURN_ON", "TURN_OFF", "SET_TARGET", "OPEN_VENT"].map((value) => ({ label: value, value }))} />
-            </Form.Item>
-            <Form.Item label="命令载荷(JSON 字符串)" name="commandPayload" rules={[{ required: true }]}>
-              <Input.TextArea rows={4} />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={commandLoading}>下发命令</Button>
-          </Form>
-        </AppCard>
+                <div className="flex items-center gap-3 self-end sm:self-auto">
+                  <span className="text-sm text-slate-500 dark:text-slate-300">
+                    {lightState === "ON" ? "灯已开" : "灯已关"}
+                  </span>
+                  <Switch
+                    checked={lightState === "ON"}
+                    checkedChildren="开"
+                    unCheckedChildren="关"
+                    loading={activeDeviceKey === item.definition.key}
+                    disabled={!canControl}
+                    onChange={(checked) => void handleToggleLight(item, checked)}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </AppCard>
 
-        <AppCard title="写入控制回执">
-          <Form form={receiptForm} layout="vertical" onFinish={(values) => void handleSubmitReceipt(values)} initialValues={{ farmId, resultCode: "SUCCESS", rawPayload: '{"code":"SUCCESS"}' }}>
-            <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
-            <Form.Item label="命令 ID" name="commandId" rules={[{ required: true }]}><InputNumber className="!w-full" /></Form.Item>
-            <Form.Item label="设备 ID" name="deviceId" rules={[{ required: true }]}><InputNumber className="!w-full" /></Form.Item>
-            <Form.Item label="结果码" name="resultCode" rules={[{ required: true }]}><Input /></Form.Item>
-            <Form.Item label="结果说明" name="resultMessage" rules={[{ required: true }]}><Input /></Form.Item>
-            <Form.Item label="原始载荷" name="rawPayload" rules={[{ required: true }]}><Input.TextArea rows={3} /></Form.Item>
-            <Button htmlType="submit" loading={receiptLoading}>提交回执</Button>
-          </Form>
-        </AppCard>
+      <Collapse
+        items={[
+          {
+            key: "rules",
+            label: `联动规则 (${rules.length})`,
+            children: (
+              <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+                <Form
+                  form={ruleForm}
+                  layout="vertical"
+                  onFinish={(values) => void handleSubmitRule(values)}
+                  initialValues={{ farmId, triggerType: "THRESHOLD", debounceSeconds: 60 }}
+                >
+                  <Form.Item name="farmId" hidden>
+                    <InputNumber />
+                  </Form.Item>
+                  <Form.Item label="规则编码" name="ruleCode" rules={[{ required: true, message: "请输入规则编码" }]}>
+                    <Input placeholder="LOW_LIGHT_AUTO_TURN_ON" />
+                  </Form.Item>
+                  <Form.Item label="规则名称" name="ruleName" rules={[{ required: true, message: "请输入规则名称" }]}>
+                    <Input placeholder="低光照自动开灯" />
+                  </Form.Item>
+                  <Form.Item label="触发类型" name="triggerType" rules={[{ required: true, message: "请选择触发类型" }]}>
+                    <Select options={["THRESHOLD", "CRON"].map((value) => ({ label: value, value }))} />
+                  </Form.Item>
+                  <Form.Item label="Cron 表达式" name="cronExpr">
+                    <Input placeholder="可为空" />
+                  </Form.Item>
+                  <Form.Item label="防抖秒数" name="debounceSeconds" rules={[{ required: true, message: "请输入防抖秒数" }]}>
+                    <InputNumber className="!w-full" min={0} />
+                  </Form.Item>
+                  <Button type="primary" htmlType="submit" loading={ruleSubmitting}>
+                    保存规则
+                  </Button>
+                </Form>
 
-        <AppCard title="控制命令列表" className="min-h-0 overflow-hidden">
-          <Table
-            rowKey="id"
-            dataSource={commands}
-            pagination={false}
-            scroll={{ y: 280 }}
-            columns={[
-              { title: "命令 ID", dataIndex: "id" },
-              { title: "设备", dataIndex: "deviceId" },
-              { title: "命令", dataIndex: "commandCode" },
-              { title: "状态", dataIndex: "commandStatus" },
-              { title: "请求时间", render: (_, record) => formatDateTime(record.requestedAt) },
-              { title: "完成时间", render: (_, record) => (record.completedAt ? formatDateTime(record.completedAt) : "-") }
-            ]}
-          />
-        </AppCard>
-      </div>
+                <div className="space-y-3">
+                  {rules.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-slate-300/80 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                      暂无联动规则。
+                    </div>
+                  ) : (
+                    rules.map((rule) => (
+                      <div
+                        key={rule.id}
+                        className="flex flex-col gap-2 rounded-2xl border border-slate-200/80 px-4 py-3 dark:border-white/8"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            {rule.ruleName}
+                          </div>
+                          <Tag color={rule.ruleStatus === "ENABLED" ? "green" : "default"}>
+                            {ruleStatusLabelMap[rule.ruleStatus as keyof typeof ruleStatusLabelMap] ?? rule.ruleStatus}
+                          </Tag>
+                        </div>
+                        <div className="text-xs text-slate-500 dark:text-slate-300">
+                          {rule.ruleCode} · {rule.triggerType} · 防抖 {rule.debounceSeconds}s
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )
+          }
+        ]}
+      />
     </div>
   );
 }
-
-

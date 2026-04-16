@@ -61,7 +61,7 @@ src
 可在本地 `.env` 中配置，例如：
 
 ```bash
-VITE_API_BASE_URL=http://localhost:8080/api
+VITE_API_BASE_URL=https://argri.syan.wang/
 VITE_SMARTJAVAAI_BASE_URL=http://localhost:8081/smartjavaai
 ```
 

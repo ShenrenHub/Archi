@@ -1,24 +1,16 @@
 import type { ReactNode } from "react";
 import {
   AppstoreOutlined,
-  BulbOutlined,
-  CameraOutlined,
-  CloudUploadOutlined,
   ControlOutlined,
   DatabaseOutlined,
-  EyeOutlined,
-  RobotOutlined,
+  MedicineBoxOutlined,
   SafetyOutlined
 } from "@ant-design/icons";
 import SmartDataCenterPage from "@/views/smart-data-center";
 import DashboardPage from "@/views/dashboard";
 import DeviceControlPage from "@/views/device-control";
-import StrategyPage from "@/views/strategy";
-import VisionPage from "@/views/vision";
-import VisionAnalysisPage from "@/views/vision-analysis";
-import AgentPage from "@/views/agent";
+import CropDiagnosisPage from "@/views/crop-diagnosis";
 import AdminPage from "@/views/admin";
-import ExpertReviewPage from "@/views/expert-review";
 
 export interface AppRouteItem {
   path: string;
@@ -47,34 +39,10 @@ export const appRoutes: AppRouteItem[] = [
     element: <DeviceControlPage />
   },
   {
-    path: "/strategy",
-    label: "联动规则管理",
-    icon: <BulbOutlined />,
-    element: <StrategyPage />
-  },
-  {
-    path: "/vision",
-    label: "摄像头与视觉任务",
-    icon: <CameraOutlined />,
-    element: <VisionPage />
-  },
-  {
-    path: "/vision-analysis",
-    label: "视觉回调写回",
-    icon: <CloudUploadOutlined />,
-    element: <VisionAnalysisPage />
-  },
-  {
-    path: "/expert-review",
-    label: "专家复核提交",
-    icon: <EyeOutlined />,
-    element: <ExpertReviewPage />
-  },
-  {
-    path: "/agent",
-    label: "农事问答",
-    icon: <RobotOutlined />,
-    element: <AgentPage />
+    path: "/crop-diagnosis",
+    label: "作物智能诊断",
+    icon: <MedicineBoxOutlined />,
+    element: <CropDiagnosisPage />
   },
   {
     path: "/admin",
