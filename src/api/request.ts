@@ -3,8 +3,7 @@ import { message } from "antd";
 import { useUserStore } from "@/store/user";
 import type { ApiResponse } from "@/types/common";
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "/api";
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080";
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://dev.winstonchen.cn:8080";
 
 export const request = axios.create({
   baseURL: apiBaseUrl,

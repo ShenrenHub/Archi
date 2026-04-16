@@ -2,7 +2,7 @@ import axios, { AxiosError } from "axios";
 import { message } from "antd";
 
 const communityBaseUrl =
-  import.meta.env.VITE_COMMUNITY_API_BASE_URL || "http://localhost:8000/api/v1";
+  import.meta.env.VITE_COMMUNITY_API_BASE_URL || "http://dev.winstonchen.cn:8000/api/v1";
 
 export type PostStatus = "open" | "analyzing" | "resolved" | "closed";
 export type AgentType = "community" | "current_data" | "rag" | "historical_data" | "voting_feedback";
