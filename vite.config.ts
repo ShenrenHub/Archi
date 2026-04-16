@@ -15,11 +15,11 @@ export default defineConfig({
     allowedHosts: ["localhost", "archi.syan.wang"],
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8080",
+        target: "https://argri.syan.wang",
         changeOrigin: true
       },
       "/ws": {
-        target: "http://127.0.0.1:8080",
+        target: "https://argri.syan.wang",
         changeOrigin: true,
         ws: true
       }
