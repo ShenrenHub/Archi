@@ -1,5 +1,6 @@
 import type { LatestTelemetryItem } from "@/api/telemetry";
 import type { Layout, LayoutItem } from "react-grid-layout";
+import { aspectRatio, type LayoutConstraint } from "react-grid-layout/core";
 
 export type SmartSocketState = "connecting" | "online" | "offline";
 export type SmartDataCardType =
@@ -15,10 +16,12 @@ export type SmartBoardLightState = "ON" | "OFF" | null;
 export const SMART_DATA_GRID_COLS = 12;
 export const SMART_DATA_GRID_ROW_HEIGHT = 72;
 export const SMART_DATA_GRID_MARGIN: readonly [number, number] = [16, 16];
-export const SMART_DATA_CARD_DEFAULT_WIDTH = 12;
-export const SMART_DATA_CARD_DEFAULT_HEIGHT = 4;
+export const SMART_DATA_CARD_DEFAULT_WIDTH = 6;
+export const SMART_DATA_CARD_DEFAULT_HEIGHT = 5;
 export const SMART_DATA_CARD_MIN_WIDTH = 2;
-export const SMART_DATA_CARD_MIN_HEIGHT = 2;
+export const SMART_DATA_CARD_MIN_HEIGHT = 1;
+export const SMART_DATA_CARD_MAX_WIDTH = 6;
+export const SMART_DATA_CARD_MAX_HEIGHT = 5;
 
 interface SmartDataCardPreset {
   width: number;
@@ -65,6 +68,34 @@ export interface SmartDataCardDefinition {
   defaultUnit?: string;
 }
 
+export type SmartDataAssistantResizePreset =
+  | "minimum"
+  | "small"
+  | "medium"
+  | "large";
+
+export type SmartDataAssistantAction =
+  | {
+      type: "show_cards";
+      cardType: SmartDataCardType;
+      count?: number;
+      focus?: boolean;
+    }
+  | {
+      type: "remove_cards";
+      cardType: SmartDataCardType;
+      scope?: "all" | "latest";
+      count?: number;
+    }
+  | {
+      type: "resize_cards";
+      cardType: SmartDataCardType;
+      size: SmartDataAssistantResizePreset;
+      scope?: "all" | "latest";
+      count?: number;
+      focus?: boolean;
+    };
+
 export const SMART_DATA_CARD_LIBRARY: SmartDataCardDefinition[] = [
   {
     type: "temperature",
@@ -109,27 +140,16 @@ export const SMART_DATA_CARD_LIBRARY: SmartDataCardDefinition[] = [
 export const LIGHT_METRIC_CODES = ["light", "light_lux", "brightness"];
 export const SMART_DATA_CHART_METRIC_CODES = ["temperature", "humidity", ...LIGHT_METRIC_CODES];
 const MAX_TELEMETRY_HISTORY_POINTS = 120;
+const SMART_DATA_CARD_CONSTRAINTS: LayoutConstraint[] = [aspectRatio(2)];
 
 const SMART_DATA_CARD_PRESETS: SmartDataCardPreset[] = [
   {
-    width: SMART_DATA_CARD_DEFAULT_WIDTH,
-    height: SMART_DATA_CARD_DEFAULT_HEIGHT
-  },
-  {
-    width: 6,
-    height: SMART_DATA_CARD_DEFAULT_HEIGHT
-  },
-  {
-    width: 6,
-    height: 3
+    width: SMART_DATA_CARD_MAX_WIDTH,
+    height: SMART_DATA_CARD_MAX_HEIGHT
   },
   {
     width: 4,
-    height: 3
-  },
-  {
-    width: 3,
-    height: 3
+    height: 2
   },
   {
     width: SMART_DATA_CARD_MIN_WIDTH,
@@ -144,6 +164,22 @@ const cloneLayoutItem = (layoutItem: LayoutItem): LayoutItem => ({
   ...layoutItem,
   resizeHandles: layoutItem.resizeHandles ? [...layoutItem.resizeHandles] : undefined,
   constraints: layoutItem.constraints ? [...layoutItem.constraints] : undefined
+});
+
+const resolveSmartDataCardMaxHeight = (maxRows = SMART_DATA_CARD_MAX_HEIGHT) =>
+  Math.min(SMART_DATA_CARD_MAX_HEIGHT, Math.max(maxRows, SMART_DATA_CARD_MIN_HEIGHT));
+
+const withSmartDataCardLayoutDefaults = (
+  layoutItem: LayoutItem,
+  maxRows = SMART_DATA_CARD_MAX_HEIGHT
+): LayoutItem => ({
+  ...layoutItem,
+  minW: SMART_DATA_CARD_MIN_WIDTH,
+  minH: SMART_DATA_CARD_MIN_HEIGHT,
+  maxW: Math.min(SMART_DATA_CARD_MAX_WIDTH, SMART_DATA_GRID_COLS),
+  maxH: resolveSmartDataCardMaxHeight(maxRows),
+  resizeHandles: layoutItem.resizeHandles ? [...layoutItem.resizeHandles] : ["se"],
+  constraints: [...SMART_DATA_CARD_CONSTRAINTS]
 });
 
 const resolveTelemetryTimestamp = (value: string) => {
@@ -239,28 +275,30 @@ export const createSmartDataCard = (
     id,
     type,
     createdAt,
-    layout: {
+    layout: withSmartDataCardLayoutDefaults({
       i: id,
       x: 0,
       y,
       w: SMART_DATA_CARD_DEFAULT_WIDTH,
-      h: SMART_DATA_CARD_DEFAULT_HEIGHT,
-      minW: SMART_DATA_CARD_MIN_WIDTH,
-      minH: SMART_DATA_CARD_MIN_HEIGHT,
-      resizeHandles: ["se"]
-    }
+      h: SMART_DATA_CARD_DEFAULT_HEIGHT
+    })
   };
 };
 
-export const buildInitialCards = (): SmartDataCardItem[] => {
-  let nextY = 0;
+export const buildInitialCards = (): SmartDataCardItem[] =>
+  (["temperature", "humidity"] as const).map((type, index) => {
+    const card = createSmartDataCard(type, 0);
 
-  return (["temperature", "humidity"] as const).map((type) => {
-    const card = createSmartDataCard(type, nextY);
-    nextY += card.layout.h;
-    return card;
+    return {
+      ...card,
+      layout: withSmartDataCardLayoutDefaults({
+        ...card.layout,
+        i: card.id,
+        x: index * SMART_DATA_CARD_DEFAULT_WIDTH,
+        y: 0
+      })
+    };
   });
-};
 
 export const getNextCardY = (cards: SmartDataCardItem[]) =>
   cards.reduce((max, card) => Math.max(max, card.layout.y + card.layout.h), 0);
@@ -275,7 +313,8 @@ const getPresetRowsNeeded = (cardCount: number, preset: SmartDataCardPreset) => 
 
 const relayoutCards = (
   cards: SmartDataCardItem[],
-  preset: SmartDataCardPreset
+  preset: SmartDataCardPreset,
+  maxRows: number
 ): SmartDataCardItem[] => {
   const cardsPerRow = Math.max(1, Math.floor(SMART_DATA_GRID_COLS / preset.width));
 
@@ -285,16 +324,14 @@ const relayoutCards = (
 
     return {
       ...card,
-      layout: {
+      layout: withSmartDataCardLayoutDefaults({
         ...card.layout,
         i: card.id,
         x: column * preset.width,
         y: row * preset.height,
         w: preset.width,
-        h: preset.height,
-        minW: SMART_DATA_CARD_MIN_WIDTH,
-        minH: SMART_DATA_CARD_MIN_HEIGHT
-      }
+        h: preset.height
+      }, maxRows)
     };
   });
 };
@@ -303,25 +340,163 @@ const getLayoutBottom = (cards: SmartDataCardItem[]) =>
   cards.reduce((max, card) => Math.max(max, card.layout.y + card.layout.h), 0);
 
 const clampCardLayout = (card: SmartDataCardItem, maxRows: number): SmartDataCardItem => {
-  const width = Math.min(Math.max(card.layout.w, SMART_DATA_CARD_MIN_WIDTH), SMART_DATA_GRID_COLS);
+  const width = Math.min(
+    Math.max(card.layout.w, SMART_DATA_CARD_MIN_WIDTH),
+    Math.min(SMART_DATA_CARD_MAX_WIDTH, SMART_DATA_GRID_COLS)
+  );
   const height = Math.min(
     Math.max(card.layout.h, SMART_DATA_CARD_MIN_HEIGHT),
-    Math.max(maxRows, SMART_DATA_CARD_MIN_HEIGHT)
+    resolveSmartDataCardMaxHeight(maxRows)
   );
 
   return {
     ...card,
-    layout: {
+    layout: withSmartDataCardLayoutDefaults({
       ...card.layout,
       i: card.id,
       x: Math.min(Math.max(0, card.layout.x), SMART_DATA_GRID_COLS - width),
       y: Math.max(0, card.layout.y),
       w: width,
-      h: height,
-      minW: SMART_DATA_CARD_MIN_WIDTH,
-      minH: SMART_DATA_CARD_MIN_HEIGHT
-    }
+      h: height
+    }, maxRows)
   };
+};
+
+const sortCardsForAssistant = (cards: SmartDataCardItem[]) =>
+  [...cards].sort((left, right) => {
+    if (left.layout.y !== right.layout.y) {
+      return left.layout.y - right.layout.y;
+    }
+
+    if (left.layout.x !== right.layout.x) {
+      return left.layout.x - right.layout.x;
+    }
+
+    return left.createdAt - right.createdAt;
+  });
+
+const moveMatchingCardsToFront = (
+  cards: SmartDataCardItem[],
+  cardType: SmartDataCardType
+) => {
+  const matching = cards.filter((card) => card.type === cardType);
+  const others = cards.filter((card) => card.type !== cardType);
+  return [...matching, ...others];
+};
+
+const resolveResizePresetLayout = (
+  size: SmartDataAssistantResizePreset
+): SmartDataCardPreset => {
+  if (size === "minimum") {
+    return {
+      width: SMART_DATA_CARD_MIN_WIDTH,
+      height: SMART_DATA_CARD_MIN_HEIGHT
+    };
+  }
+
+  if (size === "small") {
+    return {
+      width: 4,
+      height: 2
+    };
+  }
+
+  if (size === "medium") {
+    return {
+      width: SMART_DATA_CARD_DEFAULT_WIDTH,
+      height: SMART_DATA_CARD_DEFAULT_HEIGHT
+    };
+  }
+
+  return {
+    width: SMART_DATA_CARD_MAX_WIDTH,
+    height: SMART_DATA_CARD_MAX_HEIGHT
+  };
+};
+
+const canOccupyGridArea = (
+  occupied: boolean[][],
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  maxRows: number
+) => {
+  if (x + width > SMART_DATA_GRID_COLS || y + height > maxRows) {
+    return false;
+  }
+
+  for (let row = y; row < y + height; row += 1) {
+    for (let column = x; column < x + width; column += 1) {
+      if (occupied[row]?.[column]) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+};
+
+const markGridAreaOccupied = (
+  occupied: boolean[][],
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) => {
+  for (let row = y; row < y + height; row += 1) {
+    for (let column = x; column < x + width; column += 1) {
+      occupied[row][column] = true;
+    }
+  }
+};
+
+const packCardsByCurrentSize = (
+  cards: SmartDataCardItem[],
+  maxRows: number
+): SmartDataCardItem[] | null => {
+  const normalizedCards = sortCardsForAssistant(cards).map((card) =>
+    clampCardLayout(card, maxRows)
+  );
+  const occupied = Array.from({ length: maxRows }, () =>
+    Array.from({ length: SMART_DATA_GRID_COLS }, () => false)
+  );
+  const packedCards: SmartDataCardItem[] = [];
+
+  for (const card of normalizedCards) {
+    const width = card.layout.w;
+    const height = card.layout.h;
+    let placed = false;
+
+    for (let row = 0; row <= maxRows - height && !placed; row += 1) {
+      for (let column = 0; column <= SMART_DATA_GRID_COLS - width; column += 1) {
+        if (!canOccupyGridArea(occupied, column, row, width, height, maxRows)) {
+          continue;
+        }
+
+        markGridAreaOccupied(occupied, column, row, width, height);
+        packedCards.push({
+          ...card,
+          layout: withSmartDataCardLayoutDefaults({
+            ...card.layout,
+            i: card.id,
+            x: column,
+            y: row,
+            w: width,
+            h: height
+          }, maxRows)
+        });
+        placed = true;
+        break;
+      }
+    }
+
+    if (!placed) {
+      return null;
+    }
+  }
+
+  return packedCards;
 };
 
 const findOldestCardIndex = (cards: SmartDataCardItem[]) =>
@@ -364,7 +539,7 @@ export const fitCardsToViewport = (
 
       if (preset) {
         return {
-          cards: relayoutCards(workingCards, preset),
+          cards: relayoutCards(workingCards, preset, maxRows),
           removedCards
         };
       }
@@ -397,7 +572,7 @@ export const fitCardsToViewport = (
 
     if (preset) {
       return {
-        cards: relayoutCards(workingCards, preset),
+        cards: relayoutCards(workingCards, preset, maxRows),
         removedCards
       };
     }
@@ -436,7 +611,11 @@ export const hasCardLayoutChanged = (cards: SmartDataCardItem[], layout: Layout)
   });
 };
 
-export const syncCardsWithLayout = (cards: SmartDataCardItem[], layout: Layout) => {
+export const syncCardsWithLayout = (
+  cards: SmartDataCardItem[],
+  layout: Layout,
+  maxRows: number
+) => {
   const nextById = new Map(layout.map((item) => [item.i, item]));
 
   return cards.map((card) => {
@@ -448,18 +627,114 @@ export const syncCardsWithLayout = (cards: SmartDataCardItem[], layout: Layout) 
 
     return {
       ...card,
-      layout: {
+      layout: withSmartDataCardLayoutDefaults({
         ...card.layout,
         i: card.id,
         x: next.x,
         y: next.y,
         w: next.w,
-        h: next.h,
-        minW: SMART_DATA_CARD_MIN_WIDTH,
-        minH: SMART_DATA_CARD_MIN_HEIGHT
-      }
+        h: next.h
+      }, maxRows)
     };
   });
+};
+
+export const applySmartDataAssistantActions = (
+  cards: SmartDataCardItem[],
+  actions: SmartDataAssistantAction[],
+  maxRows: number
+) => {
+  let workingCards = [...cards];
+
+  actions.forEach((action) => {
+    if (action.type === "show_cards") {
+      const existingCards = workingCards.filter((card) => card.type === action.cardType);
+      const targetCount = Math.max(1, action.count ?? 1);
+      const missingCount = Math.max(0, targetCount - existingCards.length);
+      const nextY = getNextCardY(workingCards);
+
+      for (let index = 0; index < missingCount; index += 1) {
+        workingCards.push(createSmartDataCard(action.cardType, nextY + index));
+      }
+
+      if (action.focus) {
+        workingCards = moveMatchingCardsToFront(workingCards, action.cardType);
+      }
+
+      const packedCards = packCardsByCurrentSize(workingCards, maxRows);
+      workingCards = packedCards ?? fitCardsToViewport(workingCards, maxRows).cards;
+      return;
+    }
+
+    if (action.type === "remove_cards") {
+      const matchingCards = workingCards
+        .filter((card) => card.type === action.cardType)
+        .sort((left, right) => left.createdAt - right.createdAt);
+
+      if (!matchingCards.length) {
+        return;
+      }
+
+      let targetIds = new Set<string>();
+
+      if (action.scope === "latest") {
+        const removeCount = Math.max(1, action.count ?? 1);
+        targetIds = new Set(
+          matchingCards.slice(-removeCount).map((card) => card.id)
+        );
+      } else {
+        targetIds = new Set(matchingCards.map((card) => card.id));
+      }
+
+      workingCards = fitCardsToViewport(
+        workingCards.filter((card) => !targetIds.has(card.id)),
+        maxRows,
+        { preferPresetLayout: true }
+      ).cards;
+      return;
+    }
+
+    const targetCards = workingCards
+      .filter((card) => card.type === action.cardType)
+      .sort((left, right) => right.createdAt - left.createdAt);
+
+    if (!targetCards.length) {
+      return;
+    }
+
+    const resizeTargetIds = new Set(
+      (action.scope === "all"
+        ? targetCards
+        : targetCards.slice(0, Math.max(1, action.count ?? 1))
+      ).map((card) => card.id)
+    );
+    const nextLayout = resolveResizePresetLayout(action.size);
+
+    workingCards = workingCards.map((card) => {
+      if (!resizeTargetIds.has(card.id)) {
+        return card;
+      }
+
+      return {
+        ...card,
+        layout: withSmartDataCardLayoutDefaults({
+          ...card.layout,
+          i: card.id,
+          w: nextLayout.width,
+          h: nextLayout.height
+        }, maxRows)
+      };
+    });
+
+    if (action.focus) {
+      workingCards = moveMatchingCardsToFront(workingCards, action.cardType);
+    }
+
+    const packedCards = packCardsByCurrentSize(workingCards, maxRows);
+    workingCards = packedCards ?? fitCardsToViewport(workingCards, maxRows).cards;
+  });
+
+  return workingCards;
 };
 
 export const resolveBoardLightStateLabel = (state: SmartBoardLightState) => {

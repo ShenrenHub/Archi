@@ -62,17 +62,17 @@ export default function AdminPage() {
     <div className="expressive-page space-y-4">
       <AppCard variant="expressive" title="农场与平台 API 总控台">
         <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-[24px] bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white">
-            <p className="text-sm text-slate-300">可见农场</p>
-            <p className="mt-3 text-4xl font-semibold">{farms.length}</p>
+          <div className="community-surface rounded-[30px] border border-white/60 p-5 dark:border-white/10">
+            <p className="text-sm text-slate-500 dark:text-slate-300">可见农场</p>
+            <p className="mt-3 text-4xl font-semibold text-slate-950 dark:text-white">{farms.length}</p>
           </div>
-          <div className="rounded-[24px] bg-gradient-to-br from-brand-500 to-emerald-700 p-5 text-white">
-            <p className="text-sm text-emerald-50">当前大棚</p>
-            <p className="mt-3 text-4xl font-semibold">{greenhouses.length}</p>
+          <div className="community-surface rounded-[30px] border border-white/60 p-5 dark:border-white/10">
+            <p className="text-sm text-slate-500 dark:text-slate-300">当前大棚</p>
+            <p className="mt-3 text-4xl font-semibold text-slate-950 dark:text-white">{greenhouses.length}</p>
           </div>
-          <div className="rounded-[24px] bg-gradient-to-br from-accent-500 to-sky-700 p-5 text-white">
-            <p className="text-sm text-sky-50">设备资产</p>
-            <p className="mt-3 text-4xl font-semibold">{devices.length}</p>
+          <div className="community-surface rounded-[30px] border border-white/60 p-5 dark:border-white/10">
+            <p className="text-sm text-slate-500 dark:text-slate-300">设备资产</p>
+            <p className="mt-3 text-4xl font-semibold text-slate-950 dark:text-white">{devices.length}</p>
           </div>
         </div>
       </AppCard>

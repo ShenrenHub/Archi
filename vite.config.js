@@ -17,6 +17,10 @@ export default defineConfig({
                 target: "http://localhost:6101",
                 changeOrigin: true
             },
+            "/api/smart-data-mcp": {
+                target: "http://127.0.0.1:8765",
+                changeOrigin: true
+            },
             "/api": {
                 target: "https://argri.syan.wang",
                 changeOrigin: true

@@ -44,7 +44,7 @@ export const SmartDataCenterConsole = ({
   return (
     <div className="pointer-events-none absolute bottom-4 left-4 z-30 flex max-w-[calc(100vw-2rem)] flex-col items-start gap-3">
       {open ? (
-        <section className="pointer-events-auto w-[min(320px,calc(100vw-2rem))] rounded-[24px] border border-slate-200/80 bg-white/88 p-4 shadow-[0_24px_60px_rgba(15,23,42,0.16)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/84 dark:shadow-[0_24px_60px_rgba(2,6,23,0.5)]">
+        <section className="community-surface pointer-events-auto w-[min(320px,calc(100vw-2rem))] rounded-[24px] border border-white/60 p-4 shadow-[0_24px_60px_rgba(121,145,127,0.12)] dark:border-white/10 dark:shadow-[0_24px_60px_rgba(2,6,23,0.45)]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.22em] text-slate-400 dark:text-slate-400">
@@ -62,7 +62,7 @@ export const SmartDataCenterConsole = ({
             />
           </div>
 
-          <div className="mt-4 rounded-[18px] border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-sm dark:border-white/10 dark:bg-white/5">
+          <div className="community-surface mt-4 rounded-[18px] border border-white/60 px-4 py-3 text-sm dark:border-white/10">
             <div className="flex items-center justify-between gap-3">
               <span className="text-slate-500 dark:text-slate-300">当前卡片</span>
               <span className="text-lg font-semibold text-slate-950 dark:text-white">
@@ -77,7 +77,7 @@ export const SmartDataCenterConsole = ({
                 key={definition.type}
                 type="button"
                 onClick={() => onAddCard(definition.type)}
-                className="flex items-center justify-between rounded-[18px] border border-slate-200/80 bg-slate-50/72 px-4 py-3 text-left transition hover:border-emerald-300 hover:bg-white hover:shadow-sm dark:border-white/10 dark:bg-white/5 dark:hover:border-emerald-500/30 dark:hover:bg-white/8"
+                className="community-surface flex cursor-pointer items-center justify-between rounded-[18px] border border-white/60 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-[rgba(111,157,118,0.32)] dark:border-white/10"
               >
                 <div>
                   <p className="text-sm font-semibold text-slate-950 dark:text-white">
@@ -87,7 +87,7 @@ export const SmartDataCenterConsole = ({
                     已有 {cardCounts[definition.type]} 张
                   </p>
                 </div>
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_10px_18px_rgba(16,185,129,0.28)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(111,157,118,0.18)] bg-[linear-gradient(135deg,#7ba67f_0%,#6e9873_100%)] text-white shadow-[0_10px_18px_rgba(111,157,118,0.22)]">
                   <PlusOutlined />
                 </span>
               </button>
@@ -103,9 +103,9 @@ export const SmartDataCenterConsole = ({
       <button
         type="button"
         onClick={onToggleOpen}
-        className="pointer-events-auto flex items-center gap-3 rounded-full border border-slate-200/80 bg-white/92 px-4 py-3 text-sm font-medium text-slate-950 shadow-[0_18px_40px_rgba(15,23,42,0.16)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-slate-950/88 dark:text-white dark:shadow-[0_18px_40px_rgba(2,6,23,0.5)]"
+        className="community-surface pointer-events-auto flex items-center gap-3 rounded-full border border-white/60 px-4 py-3 text-sm font-medium text-slate-950 shadow-[0_18px_40px_rgba(121,145,127,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_46px_rgba(121,145,127,0.16)] dark:border-white/10 dark:text-white dark:shadow-[0_18px_40px_rgba(2,6,23,0.4)]"
       >
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[linear-gradient(135deg,#1e40af,#3b82f6)] text-white shadow-[0_12px_22px_rgba(59,130,246,0.3)]">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-[rgba(111,157,118,0.18)] bg-[linear-gradient(135deg,#7ba67f_0%,#6e9873_100%)] text-white shadow-[0_12px_22px_rgba(111,157,118,0.24)]">
           <AppstoreAddOutlined />
         </span>
         <span>{triggerLabel}</span>

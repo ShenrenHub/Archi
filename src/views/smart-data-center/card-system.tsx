@@ -32,6 +32,10 @@ import {
 const GENGZHI_FORUM_URL =
   import.meta.env.VITE_GENGZHI_URL || "http://175.178.11.192:6001/community";
 const TELEMETRY_CHART_COLORS = ["#15803D", "#22C55E", "#0284C7", "#CA8A04", "#DC2626", "#0F766E"];
+const SMART_DATA_SURFACE_CLASS =
+  "community-surface border dark:border-white/10";
+const SMART_DATA_INNER_PANEL_CLASS =
+  "community-surface rounded-[22px] border border-white/60 px-4 py-4 dark:border-white/10";
 
 interface SmartDataCardProps {
   card: SmartDataCardItem;
@@ -88,55 +92,48 @@ const CARD_THEME: Record<
 > = {
   temperature: {
     icon: <FireOutlined />,
-    shellClassName:
-      "border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,247,237,0.96),rgba(255,251,235,0.88))] dark:border-amber-400/18 dark:bg-[linear-gradient(180deg,rgba(69,26,3,0.62),rgba(30,41,59,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--temperature`,
     iconClassName:
-      "bg-amber-500/14 text-amber-600 dark:bg-amber-400/16 dark:text-amber-100",
-    valueClassName: "text-amber-600 dark:text-amber-100"
+      "bg-amber-50 text-amber-700 dark:bg-amber-500/12 dark:text-amber-200",
+    valueClassName: "text-amber-700 dark:text-amber-200"
   },
   humidity: {
     icon: <CloudOutlined />,
-    shellClassName:
-      "border-sky-200/80 bg-[linear-gradient(180deg,rgba(239,246,255,0.96),rgba(236,254,255,0.86))] dark:border-sky-400/18 dark:bg-[linear-gradient(180deg,rgba(8,47,73,0.54),rgba(15,23,42,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--humidity`,
     iconClassName:
-      "bg-sky-500/14 text-sky-600 dark:bg-sky-400/16 dark:text-sky-100",
-    valueClassName: "text-sky-600 dark:text-sky-100"
+      "bg-sky-50 text-sky-700 dark:bg-sky-500/12 dark:text-sky-200",
+    valueClassName: "text-sky-700 dark:text-sky-200"
   },
   light: {
     icon: <BulbOutlined />,
-    shellClassName:
-      "border-yellow-200/80 bg-[linear-gradient(180deg,rgba(254,252,232,0.96),rgba(255,251,235,0.88))] dark:border-yellow-400/18 dark:bg-[linear-gradient(180deg,rgba(113,63,18,0.52),rgba(30,41,59,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--light`,
     iconClassName:
-      "bg-yellow-500/14 text-yellow-600 dark:bg-yellow-400/16 dark:text-yellow-100",
-    valueClassName: "text-yellow-600 dark:text-yellow-100"
+      "bg-yellow-50 text-yellow-700 dark:bg-yellow-500/12 dark:text-yellow-200",
+    valueClassName: "text-yellow-700 dark:text-yellow-200"
   },
   telemetryChart: {
     icon: <LineChartOutlined />,
-    shellClassName:
-      "border-emerald-200/80 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(240,253,250,0.88))] dark:border-emerald-400/18 dark:bg-[linear-gradient(180deg,rgba(6,78,59,0.56),rgba(15,23,42,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--telemetry`,
     iconClassName:
-      "bg-emerald-500/14 text-emerald-600 dark:bg-emerald-400/16 dark:text-emerald-100"
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-200"
   },
   boardLightControl: {
     icon: <ThunderboltOutlined />,
-    shellClassName:
-      "border-fuchsia-200/80 bg-[linear-gradient(180deg,rgba(250,245,255,0.96),rgba(253,244,255,0.88))] dark:border-fuchsia-400/18 dark:bg-[linear-gradient(180deg,rgba(88,28,135,0.42),rgba(15,23,42,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--board`,
     iconClassName:
-      "bg-fuchsia-500/14 text-fuchsia-600 dark:bg-fuchsia-400/16 dark:text-fuchsia-100"
+      "bg-violet-50 text-violet-700 dark:bg-violet-500/12 dark:text-violet-200"
   },
   startDiagnosis: {
     icon: <MedicineBoxOutlined />,
-    shellClassName:
-      "border-rose-200/80 bg-[linear-gradient(180deg,rgba(255,241,242,0.96),rgba(255,245,245,0.88))] dark:border-rose-400/18 dark:bg-[linear-gradient(180deg,rgba(127,29,29,0.4),rgba(15,23,42,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--diagnosis`,
     iconClassName:
-      "bg-rose-500/14 text-rose-600 dark:bg-rose-400/16 dark:text-rose-100"
+      "bg-rose-50 text-rose-700 dark:bg-rose-500/12 dark:text-rose-200"
   },
   openCommunity: {
     icon: <ExportOutlined />,
-    shellClassName:
-      "border-blue-200/80 bg-[linear-gradient(180deg,rgba(239,246,255,0.96),rgba(244,249,255,0.88))] dark:border-blue-400/18 dark:bg-[linear-gradient(180deg,rgba(30,64,175,0.34),rgba(15,23,42,0.92))]",
+    shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--community`,
     iconClassName:
-      "bg-blue-500/14 text-blue-600 dark:bg-blue-400/16 dark:text-blue-100"
+      "bg-blue-50 text-blue-700 dark:bg-blue-500/12 dark:text-blue-200"
   }
 };
 
@@ -232,7 +229,7 @@ const formatTelemetryValue = (value: unknown) => {
 };
 
 const DataMessage = ({ message }: { message: string }) => (
-  <div className="flex h-full items-center rounded-[24px] border border-dashed border-slate-300/80 bg-white/68 px-4 py-5 text-sm leading-7 text-slate-500 dark:border-white/12 dark:bg-slate-950/35 dark:text-slate-300">
+  <div className="community-surface flex h-full items-center rounded-[24px] border border-dashed border-white/60 px-4 py-5 text-sm leading-7 text-slate-500 dark:border-white/10 dark:text-slate-300">
     {message}
   </div>
 );
@@ -245,13 +242,13 @@ const DataLoadingState = ({
   minimal?: boolean;
 }) => (
   <div className={clsx("space-y-4", compact ? "pt-2" : "")}>
-    <div className={clsx("animate-pulse rounded-full bg-white/80 dark:bg-white/10", minimal ? "h-5 w-16" : "h-7 w-24")} />
-    <div className={clsx("animate-pulse rounded-[20px] bg-white/80 dark:bg-white/10", minimal ? "h-12" : "h-16")} />
+    <div className={clsx("animate-pulse rounded-full bg-slate-200/75 dark:bg-white/8", minimal ? "h-5 w-16" : "h-7 w-24")} />
+    <div className={clsx("animate-pulse rounded-[20px] bg-slate-200/75 dark:bg-white/8", minimal ? "h-12" : "h-16")} />
     {!minimal ? (
       <div className={clsx("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
-        <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
-        <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
-        {!compact ? <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" /> : null}
+        <div className="h-20 animate-pulse rounded-[18px] bg-slate-200/75 dark:bg-white/8" />
+        <div className="h-20 animate-pulse rounded-[18px] bg-slate-200/75 dark:bg-white/8" />
+        {!compact ? <div className="h-20 animate-pulse rounded-[18px] bg-slate-200/75 dark:bg-white/8" /> : null}
       </div>
     ) : null}
   </div>
@@ -264,7 +261,7 @@ const MetaPlate = ({
   label: string;
   value: string;
 }) => (
-  <div className="rounded-[18px] border border-white/60 bg-white/72 px-4 py-3 shadow-sm dark:border-white/8 dark:bg-slate-950/42 dark:shadow-none">
+  <div className="community-surface rounded-[18px] border border-white/60 px-4 py-3 dark:border-white/10">
     <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">{label}</p>
     <p className="mt-2 truncate text-sm font-semibold text-slate-900 dark:text-white">{value}</p>
   </div>
@@ -353,7 +350,7 @@ const SmartDataCardFrame = ({
     <article
       ref={articleRef}
       className={clsx(
-        "relative flex h-full flex-col overflow-hidden rounded-[28px] border shadow-sm backdrop-blur-xl transition dark:shadow-none",
+        "relative flex h-full flex-col overflow-hidden rounded-[28px] shadow-sm transition dark:shadow-none",
         ultraCompact ? "p-3.5" : compact ? "p-4" : "p-5",
         shellClassName
       )}
@@ -534,7 +531,7 @@ const SmartDataMetricCard = ({
                   <MetaPlate label="温室" value={`#${metric.greenhouseId}`} />
                 </div>
 
-                <div className="rounded-[22px] border border-white/65 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+                <div className={SMART_DATA_INNER_PANEL_CLASS}>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
                     更新时间
                   </p>
@@ -823,7 +820,7 @@ const SmartDataTelemetryChartCard = ({
               </div>
             ) : null}
 
-            <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/60 bg-white/74 p-2 dark:border-white/8 dark:bg-slate-950/42">
+            <div className="community-surface min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/60 p-2 dark:border-white/10">
               <ReactECharts
                 option={telemetryChartOption}
                 style={{
@@ -917,7 +914,7 @@ const SmartDataBoardLightCard = ({
 
         if (!showStatusPanel && !showMetaGrid) {
           return (
-            <div className="flex h-full flex-1 items-center justify-between gap-3 rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+            <div className={clsx(SMART_DATA_INNER_PANEL_CLASS, "flex h-full flex-1 items-center justify-between gap-3")}>
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
                   灯光状态
@@ -947,7 +944,7 @@ const SmartDataBoardLightCard = ({
             ) : null}
 
             {showStatusPanel ? (
-              <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+              <div className={SMART_DATA_INNER_PANEL_CLASS}>
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
                   当前灯光状态
                 </p>
@@ -992,7 +989,7 @@ const SmartDataBoardLightCard = ({
               </div>
             ) : null}
 
-            <div className="flex items-center justify-between rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+            <div className={clsx(SMART_DATA_INNER_PANEL_CLASS, "flex items-center justify-between")}>
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">灯光开关</p>
                 {showSwitchHelper ? (
@@ -1082,7 +1079,7 @@ const SmartDataActionCard = ({
                 size="middle"
                 icon={theme.icon}
                 onClick={config.action}
-                className="smart-data-card-action"
+                className="smart-data-card-action community-primary-btn"
               >
                 {config.buttonLabel}
               </Button>
@@ -1092,7 +1089,7 @@ const SmartDataActionCard = ({
 
         return (
           <div className="flex h-full flex-1 flex-col justify-between">
-            <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+            <div className={SMART_DATA_INNER_PANEL_CLASS}>
               {showHelperLabel ? (
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
                   {config.helperLabel}
@@ -1119,7 +1116,7 @@ const SmartDataActionCard = ({
               size={ultraCompact ? "middle" : "large"}
               icon={theme.icon}
               onClick={config.action}
-              className="smart-data-card-action mt-4"
+              className="smart-data-card-action community-primary-btn mt-4"
             >
               {config.buttonLabel}
             </Button>

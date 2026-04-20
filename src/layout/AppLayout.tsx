@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Breadcrumb, Button, Drawer, Select, Switch, Tag } from "antd";
+import { Breadcrumb, Button, Select, Switch, Tag } from "antd";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { ExportOutlined, MenuOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
+import { ExportOutlined, MoonOutlined, SunOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import gengzhiMark from "@/assets/gengzhi-mark.svg";
 import { fetchMyFarms } from "@/api/farm";
 import { appRoutes, getDefaultRoute, getVisibleRoutes } from "@/router/route-map";
 import { useThemeStore } from "@/store/theme";
@@ -23,7 +22,6 @@ export const AppLayout = () => {
   const mode = useThemeStore((state) => state.mode);
   const toggleMode = useThemeStore((state) => state.toggleMode);
   const { farms, farmId, username, displayName, setFarms, setFarmId } = useUserStore();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [now, setNow] = useState(() => dayjs());
   const visibleRoutes = useMemo(() => getVisibleRoutes(), []);
   const defaultRoute = useMemo(() => getDefaultRoute(), []);
@@ -62,10 +60,6 @@ export const AppLayout = () => {
   }, [defaultRoute, location.pathname, navigate, visibleRoutes]);
 
   useEffect(() => {
-    setMobileNavOpen(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(dayjs());
     }, 30000);
@@ -87,146 +81,13 @@ export const AppLayout = () => {
 
   const isSmartDataCenterPage = selectedKey === "/smart-data-center";
   const showTopHeader = !isSmartDataCenterPage;
-  const navContent = (
-    <div className={`flex h-full flex-col px-4 py-5 ${isDark ? "text-white" : "text-slate-900"}`}>
-      <div
-        className={`rounded-[24px] border p-4 backdrop-blur ${
-          isDark
-            ? "border-white/10 bg-white/6"
-            : "border-slate-200/90 bg-white/88 shadow-[0_18px_38px_rgba(15,23,42,0.06)]"
-        }`}
-      >
-        <p className={`text-xs uppercase tracking-[0.3em] ${isDark ? "text-emerald-300/80" : "text-emerald-700/80"}`}>
-          Agri Nexus
-        </p>
-        <h1 className={`mt-3 text-xl font-semibold leading-8 ${isDark ? "text-white" : "text-slate-950"}`}>
-          智慧温室后端联调
-          <br />
-          前端控制台
-        </h1>
-      </div>
-
-      <nav className="mt-6 flex flex-1 flex-col gap-2">
-        {visibleRoutes.map((item) => {
-          const active = selectedKey === item.path;
-          return (
-            <button
-              key={item.path}
-              type="button"
-              onClick={() => navigate(item.path)}
-              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
-                active
-                  ? "border-transparent bg-gradient-to-r from-brand-500 to-accent-500 text-white shadow-glow"
-                  : isDark
-                    ? "border-transparent bg-white/0 text-slate-300 hover:bg-white/8 hover:text-white"
-                    : "border-transparent bg-white/0 text-slate-600 hover:border-white/80 hover:bg-white/88 hover:text-slate-950 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
-              }`}
-            >
-              <span className={`text-lg ${active ? "text-white" : isDark ? "text-slate-300" : "text-slate-500"}`}>
-                {item.icon}
-              </span>
-              <span className="text-sm font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-      <div className="mt-6 space-y-3">
-        <a
-          href={GENGZHI_URL}
-          target="_blank"
-          rel="noreferrer"
-          className={`group block rounded-[24px] border p-4 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
-            isDark
-              ? "border-emerald-400/16 bg-[linear-gradient(135deg,rgba(6,95,70,0.34),rgba(15,23,42,0.92)_52%,rgba(4,18,20,0.94))] shadow-[0_18px_48px_rgba(2,6,23,0.26)] hover:-translate-y-0.5 hover:border-emerald-300/30 hover:shadow-[0_22px_54px_rgba(2,6,23,0.34)]"
-              : "border-emerald-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,252,248,0.94)_55%,rgba(236,253,245,0.92))] shadow-[0_20px_44px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-emerald-300/90 hover:shadow-[0_24px_52px_rgba(15,23,42,0.12)]"
-          }`}
-        >
-          <div className="grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-3">
-            <img
-              src={gengzhiMark}
-              alt="耕知"
-              className={`h-10 w-10 rounded-2xl border p-1.5 ${
-                isDark
-                  ? "border-white/10 bg-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
-                  : "border-emerald-100 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_10px_18px_rgba(15,23,42,0.06)]"
-              }`}
-            />
-            <div className="min-w-0 text-center">
-              <p className={`text-[11px] uppercase tracking-[0.24em] ${isDark ? "text-emerald-200/68" : "text-emerald-700/72"}`}>Forum</p>
-              <p className={`mt-1 text-base font-semibold ${isDark ? "text-white" : "text-slate-950"}`}>耕知</p>
-              {/* <p className="mt-1 text-xs text-slate-300">跟大家聊聊吧</p> */}
-            </div>
-            <div
-              className={`flex h-10 w-10 items-center justify-center rounded-2xl border text-base transition ${
-                isDark
-                  ? "border-white/10 bg-white/6 text-emerald-200/88 group-hover:border-emerald-300/24 group-hover:bg-emerald-400/10 group-hover:text-white"
-                  : "border-emerald-100 bg-white/86 text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] group-hover:border-emerald-300/90 group-hover:bg-emerald-50 group-hover:text-emerald-800"
-              }`}
-            >
-              <ExportOutlined />
-            </div>
-          </div>
-        </a>
-
-        {/* <div className="rounded-[24px] border border-white/10 bg-white/5 text-sm">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">当前时间</p>
-          <p className="mt-2 text-xl font-semibold text-white">{now.format("YYYY-MM-DD HH:mm")}</p>
-        </div> */}
-      </div>
-    </div>
-  );
 
   return (
-    <div className="min-h-screen bg-transparent lg:h-screen lg:overflow-hidden">
-      <div className="flex min-h-screen flex-col lg:grid lg:h-screen lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-4 lg:p-4">
-        <aside
-          className={`m-4 hidden h-[calc(100vh-2rem)] overflow-hidden rounded-[32px] border backdrop-blur-xl lg:block ${
-            isDark
-              ? "border-white/10 bg-slate-950/90 shadow-panel"
-              : "border-slate-200/90 bg-[linear-gradient(180deg,rgba(248,250,252,0.88),rgba(255,255,255,0.96)_48%,rgba(240,253,244,0.92))] shadow-[0_28px_68px_rgba(15,23,42,0.10)]"
-          }`}
-        >
-          {navContent}
-        </aside>
-
-        <Drawer
-          placement="left"
-          open={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
-          width={300}
-          className="lg:hidden"
-          styles={{
-            body: {
-              padding: 0,
-              background: isDark
-                ? "rgba(2, 6, 23, 0.96)"
-                : "linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 244, 0.96))"
-            },
-            header: { display: "none" },
-            content: {
-              background: isDark
-                ? "rgba(2, 6, 23, 0.96)"
-                : "linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 244, 0.96))"
-            }
-          }}
-        >
-          {navContent}
-        </Drawer>
-
-        <main className="relative flex min-h-screen flex-col lg:min-h-0 lg:overflow-hidden">
-          {!showTopHeader && (
-            <button
-              type="button"
-              onClick={() => setMobileNavOpen(true)}
-              className="absolute left-3 top-3 z-20 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-lg text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.12)] backdrop-blur-md transition active:scale-95 dark:border-white/12 dark:bg-slate-900/80 dark:text-slate-100 lg:hidden"
-            >
-              <MenuOutlined />
-            </button>
-          )}
-
+    <div className="h-screen overflow-hidden bg-transparent">
+      <div className="flex h-screen flex-col">
+        <main className="relative flex flex-1 flex-col overflow-hidden">
           {showTopHeader && (
-            <header className="sticky top-0 z-20 mx-3 mt-3 rounded-[28px] border border-slate-200/80 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 lg:mx-0 lg:mt-4 lg:flex lg:min-h-[96px] lg:items-center lg:justify-between lg:gap-4 lg:px-6 lg:py-5">
+            <header className="sticky top-0 z-20 mx-3 mt-3 rounded-[28px] border border-slate-200/80 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 lg:mx-4 lg:mt-4 lg:flex lg:min-h-[96px] lg:items-center lg:justify-between lg:gap-4 lg:px-6 lg:py-5">
               <div className="flex items-start justify-between gap-3 lg:block">
                 <div>
                   <Breadcrumb items={breadcrumbItems} />
@@ -239,13 +100,6 @@ export const AppLayout = () => {
                     </span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileNavOpen(true)}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-lg text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.12)] transition active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 lg:hidden"
-                >
-                  <MenuOutlined />
-                </button>
               </div>
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:mt-0 lg:justify-end">
@@ -274,13 +128,61 @@ export const AppLayout = () => {
           )}
 
           <section
-            className={`flex-1 min-h-0 overflow-y-auto px-3 pb-6 lg:px-0 lg:pb-4 ${
-              showTopHeader ? "pt-3" : "pt-16 lg:pt-4"
+            className={`flex-1 min-h-0 overflow-y-auto px-3 lg:px-4 ${
+              isSmartDataCenterPage ? "pb-14 pt-4 lg:pb-14" : "pb-36 pt-3 lg:pb-36"
             }`}
           >
             <Outlet />
           </section>
         </main>
+
+        {/* macOS Dock */}
+        <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[720px] -translate-x-1/2 min-[1124px]:w-auto">
+          <div className="flex items-center gap-1 rounded-[32px] border bg-white/88 px-2 py-2 shadow-[0_12px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/88 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            {visibleRoutes
+              .filter((item) => item.path !== "/admin")
+              .map((item) => {
+                const active = selectedKey === item.path;
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    onClick={() => navigate(item.path)}
+                    className={`group relative flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] px-3 py-2.5 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 min-[1124px]:flex-none min-[1124px]:px-5 min-[1124px]:py-3 ${
+                      active
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-white/5"
+                    }`}
+                    title={item.label}
+                  >
+                    <span className={`text-xl min-[1124px]:text-2xl ${active ? "text-emerald-700 dark:text-emerald-300" : ""}`}>
+                      {item.icon}
+                    </span>
+                    <span className="max-w-[4rem] text-center text-[10px] font-medium leading-tight min-[1124px]:max-w-[5rem] min-[1124px]:text-xs">
+                      {item.label}
+                    </span>
+                    {active && (
+                      <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+                    )}
+                  </button>
+                );
+              })}
+            <a
+              href={GENGZHI_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="group relative flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] px-3 py-2.5 text-slate-500 transition duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 dark:text-slate-400 dark:hover:bg-white/5 min-[1124px]:flex-none min-[1124px]:px-5 min-[1124px]:py-3"
+              title="耕知论坛"
+            >
+              <span className="text-xl min-[1124px]:text-2xl">
+                <ExportOutlined />
+              </span>
+              <span className="max-w-[4rem] text-center text-[10px] font-medium leading-tight min-[1124px]:max-w-[5rem] min-[1124px]:text-xs">
+                耕知论坛
+              </span>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ export const StatCard = ({ title, value, suffix, icon, highlight, variant = "def
           </p>
         ) : null}
       </div>
-      <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 p-3 text-xl text-white shadow-glow">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-emerald-50 text-lg text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
         {icon}
       </div>
     </div>

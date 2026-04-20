@@ -8,6 +8,14 @@ import styles from "./mascot-layer.module.css";
 
 type Point = { x: number; y: number };
 type Rect = { left: number; top: number; right: number; bottom: number };
+type DragState = {
+  pointerId: number;
+  offsetX: number;
+  offsetY: number;
+  startX: number;
+  startY: number;
+  lastX: number;
+};
 
 const SPRITE_WIDTH = 60;
 const SPRITE_HEIGHT = 56;
@@ -19,6 +27,7 @@ const MIN_WAIT_MS = 750;
 const MAX_WAIT_MS = 2100;
 const AUTO_SPEAK_MIN_MS = 11000;
 const AUTO_SPEAK_MAX_MS = 18000;
+const DRAG_START_DISTANCE = 6;
 const OBSTACLE_QUERY = [
   "aside",
   "header",
@@ -90,6 +99,13 @@ function intersects(a: Rect, b: Rect) {
 function collides(x: number, y: number, obstacles: Rect[]) {
   const rect = spriteRect(x, y);
   return obstacles.some((obstacle) => intersects(rect, obstacle));
+}
+
+function clampPosition(point: Point, viewport: Point) {
+  return {
+    x: clamp(point.x, EDGE_PADDING, viewport.x - SPRITE_WIDTH - EDGE_PADDING),
+    y: clamp(point.y, EDGE_PADDING, viewport.y - SPRITE_HEIGHT - EDGE_PADDING)
+  };
 }
 
 function pickTarget(viewport: Point, obstacles: Rect[]) {
@@ -170,6 +186,7 @@ export function MascotLayer({ dark }: { dark: boolean }) {
   const [pose, setPose] = useState<"idle" | "walk">("idle");
   const [jumping, setJumping] = useState(false);
   const [facing, setFacing] = useState<1 | -1>(1);
+  const [dragging, setDragging] = useState(false);
 
   const frameRef = useRef<number | undefined>(undefined);
   const speechTimeoutRef = useRef<number | undefined>(undefined);
@@ -187,6 +204,9 @@ export function MascotLayer({ dark }: { dark: boolean }) {
   const showSpeechRef = useRef<(line: string, durationMs?: number) => void>(() => undefined);
   const triggerHopRef = useRef<() => void>(() => undefined);
   const applyDecisionRef = useRef<(decision: MascotInteractResponse) => void>(() => undefined);
+  const dragStateRef = useRef<DragState | null>(null);
+  const draggingRef = useRef(false);
+  const suppressClickRef = useRef(false);
 
   const phrasePool = useMemo(() => {
     const key = routeKey(location.pathname);
@@ -231,12 +251,7 @@ export function MascotLayer({ dark }: { dark: boolean }) {
     const refreshViewport = () => {
       viewportRef.current = { x: window.innerWidth, y: window.innerHeight };
 
-      const maxX = Math.max(EDGE_PADDING, viewportRef.current.x - SPRITE_WIDTH - EDGE_PADDING);
-      const maxY = Math.max(EDGE_PADDING, viewportRef.current.y - SPRITE_HEIGHT - EDGE_PADDING);
-      positionRef.current = {
-        x: clamp(positionRef.current.x, EDGE_PADDING, maxX),
-        y: clamp(positionRef.current.y, EDGE_PADDING, maxY)
-      };
+      positionRef.current = clampPosition(positionRef.current, viewportRef.current);
       setPosition(positionRef.current);
     };
 
@@ -304,6 +319,12 @@ export function MascotLayer({ dark }: { dark: boolean }) {
 
       if (now >= nextSpeakAtRef.current && !speechRef.current) {
         speak();
+      }
+
+      if (draggingRef.current) {
+        setPose("idle");
+        frameRef.current = window.requestAnimationFrame(loop);
+        return;
       }
 
       if (now < waitUntilRef.current) {
@@ -417,9 +438,100 @@ export function MascotLayer({ dark }: { dark: boolean }) {
     >
       <button
         type="button"
-        className={styles.actor}
+        className={[styles.actor, dragging ? styles.dragging : ""].join(" ")}
         style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
+        onPointerDown={(event) => {
+          suppressClickRef.current = false;
+          dragStateRef.current = {
+            pointerId: event.pointerId,
+            offsetX: event.clientX - positionRef.current.x,
+            offsetY: event.clientY - positionRef.current.y,
+            startX: event.clientX,
+            startY: event.clientY,
+            lastX: event.clientX
+          };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          const dragState = dragStateRef.current;
+          if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+          }
+
+          const dragDistance = Math.hypot(
+            event.clientX - dragState.startX,
+            event.clientY - dragState.startY
+          );
+
+          if (!draggingRef.current && dragDistance < DRAG_START_DISTANCE) {
+            return;
+          }
+
+          if (!draggingRef.current) {
+            draggingRef.current = true;
+            suppressClickRef.current = true;
+            setDragging(true);
+            setPose("idle");
+            targetRef.current = null;
+            showSpeechRef.current("拖我去巡逻也行。", 1200);
+          }
+
+          const nextPosition = clampPosition(
+            {
+              x: event.clientX - dragState.offsetX,
+              y: event.clientY - dragState.offsetY
+            },
+            viewportRef.current
+          );
+
+          setFacing(event.clientX >= dragState.lastX ? 1 : -1);
+          dragState.lastX = event.clientX;
+          positionRef.current = nextPosition;
+          setPosition(nextPosition);
+        }}
+        onPointerUp={(event) => {
+          const dragState = dragStateRef.current;
+          if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+          }
+
+          dragStateRef.current = null;
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+
+          if (!draggingRef.current) {
+            return;
+          }
+
+          draggingRef.current = false;
+          setDragging(false);
+          targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
+          waitUntilRef.current = performance.now() + 320;
+          speedRef.current = rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
+        }}
+        onPointerCancel={(event) => {
+          const dragState = dragStateRef.current;
+          if (!dragState || dragState.pointerId !== event.pointerId) {
+            return;
+          }
+
+          dragStateRef.current = null;
+          draggingRef.current = false;
+          setDragging(false);
+          targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
+          waitUntilRef.current = performance.now() + 320;
+          speedRef.current = rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }}
         onClick={async () => {
+          if (suppressClickRef.current) {
+            suppressClickRef.current = false;
+            return;
+          }
+
           triggerHopRef.current();
 
           if (pending) {

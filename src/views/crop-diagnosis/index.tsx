@@ -471,7 +471,7 @@ export default function CropDiagnosisPage() {
                     </p>
                   </div>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
+                <div className="community-highlight rounded-2xl p-4">
                   <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">AI 建议</p>
                   <ul className="list-disc space-y-1 pl-4 text-sm text-slate-600 dark:text-slate-400">
                     {currentRecord.aiResult.suggestions.map((s, i) => (
@@ -609,7 +609,7 @@ export default function CropDiagnosisPage() {
                   </Descriptions.Item>
                   <Descriptions.Item label="严重程度">{selectedRecord.aiResult.severity}</Descriptions.Item>
                 </Descriptions>
-                <div className="mt-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60">
+                <div className="community-highlight mt-3 rounded-xl p-3">
                   <p className="mb-1 text-sm font-medium">AI 建议</p>
                   <ul className="list-disc space-y-1 pl-4 text-sm text-slate-600 dark:text-slate-400">
                     {selectedRecord.aiResult.suggestions.map((s, i) => (

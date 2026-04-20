@@ -19,8 +19,13 @@
   padding: 0;
   border: 0;
   background: transparent;
-  cursor: pointer;
-  touch-action: manipulation;
+  cursor: grab;
+  touch-action: none;
+}
+
+.actor:active,
+.dragging {
+  cursor: grabbing;
 }
 
 .bubble {

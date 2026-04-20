@@ -103,6 +103,7 @@ export const SmartDataCenterCanvasPanel = ({
 
   return (
     <AppCard
+      variant="expressive"
       title="动态卡片容器"
       extra={
         <div className="flex flex-wrap items-center gap-2">
@@ -121,22 +122,25 @@ export const SmartDataCenterCanvasPanel = ({
             size="small"
             icon={<ReloadOutlined />}
             loading={runtime.loading}
+            className="community-ghost-btn"
             onClick={() => void onRefresh()}
           >
             刷新
           </Button>
         </div>
       }
-      className="flex min-h-[420px] flex-col xl:h-full xl:min-h-0"
+      className="flex h-full min-h-[460px] flex-1 flex-col overflow-hidden"
     >
-      <div ref={containerRef} className="flex min-h-[360px] flex-1 flex-col xl:min-h-0">
-        <div ref={viewportRef} className="flex-1 overflow-hidden xl:min-h-0">
+      <div ref={containerRef} className="flex min-h-0 flex-1 flex-col">
+        <div ref={viewportRef} className="flex min-h-0 flex-1 overflow-hidden">
           {!cards.length ? (
-            <div className="flex min-h-[360px] items-center justify-center rounded-[28px] border border-dashed border-slate-300/80 bg-slate-50/70 p-8 text-center dark:border-white/12 dark:bg-white/5">
-              <div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-white">容器为空</p>
+            <div className="community-surface flex h-full min-h-[360px] w-full flex-1 items-center justify-center rounded-[28px] border border-dashed border-white/60 p-8 text-center dark:border-white/10">
+              <div className="mx-auto max-w-sm">
+                <p className="text-lg font-semibold text-slate-900 dark:text-white">
+                  您想要做什么呢？在右下角告诉我吧！
+                </p>
                 <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-slate-300">
-                  通过左下角控制台添加需要的动态卡片。
+                  使用右下角键盘入口，可以直接让我帮您调整动态卡片。
                 </p>
               </div>
             </div>
@@ -180,8 +184,8 @@ export const SmartDataCenterCanvasPanel = ({
             </ReactGridLayout>
           ) : (
             <div className="space-y-4 pt-2">
-              <div className="h-[280px] animate-pulse rounded-[28px] bg-white/70 dark:bg-white/5" />
-              <div className="h-[280px] animate-pulse rounded-[28px] bg-white/70 dark:bg-white/5" />
+              <div className="community-surface h-[280px] animate-pulse rounded-[28px] border border-white/60 dark:border-white/10" />
+              <div className="community-surface h-[280px] animate-pulse rounded-[28px] border border-white/60 dark:border-white/10" />
             </div>
           )}
         </div>

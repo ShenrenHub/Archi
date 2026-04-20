@@ -1,13 +1,17 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import type { Layout } from "react-grid-layout";
+import { requestSmartDataAssistant } from "./assistant-api";
+import { SmartDataCenterAssistantDock } from "./SmartDataCenterAssistantDock";
 import { SmartDataCenterCanvasPanel } from "./SmartDataCenterCanvasPanel";
 import { SmartDataCenterConsole } from "./SmartDataCenterConsole";
 import { useSmartDataCenterRuntime } from "./useSmartDataCenterRuntime";
 import {
+  applySmartDataAssistantActions,
   buildInitialCards,
   createSmartDataCard,
   fitCardsToViewport,
+  getCardDefinition,
   getNextCardY,
   hasCardLayoutChanged,
   resolveSmartDataMaxRows,
@@ -18,14 +22,25 @@ import {
 
 export default function SmartDataCenterPage() {
   const [cards, setCards] = useState<SmartDataCardItem[]>(() => buildInitialCards());
-  const [consoleOpen, setConsoleOpen] = useState(true);
+  const [consoleOpen, setConsoleOpen] = useState(false);
+  const [assistantPending, setAssistantPending] = useState(false);
+  const [assistantReply, setAssistantReply] = useState("");
   const [maxRows, setMaxRows] = useState(() => resolveSmartDataMaxRows(360));
+  const assistantActionTimerRef = useRef<number | null>(null);
   const handleRuntimeLoadFailed = useCallback(() => {
     message.error("智慧数据中心实时数据装载失败");
   }, []);
   const { runtime, refreshRuntime, toggleBoardLight } = useSmartDataCenterRuntime(
     handleRuntimeLoadFailed
   );
+
+  useEffect(() => {
+    return () => {
+      if (assistantActionTimerRef.current !== null) {
+        window.clearTimeout(assistantActionTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleAddCard = (type: SmartDataCardType) => {
     const { cards: nextCards, removedCards } = fitCardsToViewport(
@@ -38,9 +53,10 @@ export default function SmartDataCenterPage() {
     if (removedCards.length > 0) {
       const removedCount = removedCards.length;
       const oldestRemoved = removedCards[0];
+      const removedLabel = getCardDefinition(oldestRemoved.type).label;
       message.warning(
         removedCount === 1
-          ? `空间不足，已移除最早的${oldestRemoved.type === "temperature" ? "实时温度" : "实时湿度"}卡片`
+          ? `空间不足，已移除最早的${removedLabel}卡片`
           : `空间不足，已移除最早的 ${removedCount} 张卡片`
       );
     }
@@ -62,7 +78,7 @@ export default function SmartDataCenterPage() {
         return current;
       }
 
-      return syncCardsWithLayout(current, layout);
+      return syncCardsWithLayout(current, layout, maxRows);
     });
   };
 
@@ -96,9 +112,52 @@ export default function SmartDataCenterPage() {
     [toggleBoardLight]
   );
 
+  const handleAssistantSubmit = useCallback(
+    async (instruction: string) => {
+      setAssistantPending(true);
+
+      try {
+        const response = await requestSmartDataAssistant({
+          instruction,
+          farmId: runtime.farmId,
+          farmName: runtime.farmName,
+          maxRows,
+          cards
+        });
+
+        setAssistantReply(response.reply);
+        message.success(response.reply);
+
+        if (assistantActionTimerRef.current !== null) {
+          window.clearTimeout(assistantActionTimerRef.current);
+        }
+
+        if (response.actions.length > 0) {
+          assistantActionTimerRef.current = window.setTimeout(() => {
+            setCards((current) =>
+              applySmartDataAssistantActions(current, response.actions, maxRows)
+            );
+            assistantActionTimerRef.current = null;
+          }, 1000);
+        }
+
+        return true;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "卡片指令执行失败";
+        message.error(errorMessage);
+        setAssistantReply(errorMessage);
+        return false;
+      } finally {
+        setAssistantPending(false);
+      }
+    },
+    [cards, maxRows, runtime.farmId, runtime.farmName]
+  );
+
   return (
-    <div className="relative h-full min-h-0">
-      <div className="h-full min-h-0">
+    <div className="smart-data-center-page expressive-page relative flex h-full min-h-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col">
         <SmartDataCenterCanvasPanel
           cards={cards}
           maxRows={maxRows}
@@ -116,6 +175,12 @@ export default function SmartDataCenterPage() {
         cards={cards}
         onToggleOpen={() => setConsoleOpen((current) => !current)}
         onAddCard={handleAddCard}
+      />
+
+      <SmartDataCenterAssistantDock
+        pending={assistantPending}
+        lastReply={assistantReply}
+        onSubmit={handleAssistantSubmit}
       />
     </div>
   );

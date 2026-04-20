@@ -75,7 +75,7 @@ export default function CommunityPage() {
   return (
     <div className="community-page h-screen overflow-y-auto overflow-x-hidden bg-[radial-gradient(circle_at_top,_rgba(18,183,106,0.1),_transparent_32%),linear-gradient(180deg,#fbfdf9_0%,#f6f8f4_44%,#f5f8fb_100%)] text-slate-950">
       <div className="mx-auto w-full max-w-[1540px] px-4 pb-16 pt-4 sm:px-5 lg:px-6">
-        <section className="community-hero relative overflow-hidden rounded-[40px] border border-[#dfe8e0] px-6 py-9 shadow-panel sm:px-9 lg:px-12 lg:py-14">
+        <section className="community-hero relative overflow-hidden rounded-[40px] border border-[#dfe8e0] px-6 py-9 sm:px-9 lg:px-12 lg:py-14">
           <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(241,247,240,0.98),rgba(250,251,247,0.98)_44%,rgba(242,246,251,0.98)_100%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(139,201,157,0.16),transparent_24%),radial-gradient(circle_at_78%_25%,rgba(170,207,238,0.14),transparent_20%),radial-gradient(circle_at_72%_78%,rgba(250,223,159,0.14),transparent_18%)]" />
           <div className="relative grid gap-10 xl:grid-cols-[minmax(0,1.25fr)_360px] xl:items-end">
@@ -197,7 +197,7 @@ export default function CommunityPage() {
             <aside className="space-y-4">
               {secondaryPosts.map((post) => (
                 <Link key={post.id} to={`/community/posts/${post.id}`} className="block">
-                  <article className="community-surface rounded-[30px] border border-white/60 px-5 py-6 transition hover:-translate-y-0.5 hover:shadow-panel">
+                  <article className="community-surface rounded-[30px] border border-white/60 px-5 py-6 transition hover:-translate-y-0.5">
                     <div className="flex items-center justify-between gap-3">
                       <Tag color={statusColorMap[post.status]}>{statusLabelMap[post.status]}</Tag>
                       <span className="text-xs text-slate-500">
@@ -236,7 +236,7 @@ export default function CommunityPage() {
             <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {(archivePosts.length > 0 ? archivePosts : posts.slice(1)).map((post) => (
                 <Link key={post.id} to={`/community/posts/${post.id}`} className="block">
-                  <article className="rounded-[28px] border border-slate-200/80 bg-white/78 px-5 py-6 transition hover:-translate-y-1 hover:shadow-panel">
+                  <article className="community-surface rounded-[28px] border border-white/60 px-5 py-6 transition hover:-translate-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Tag color={statusColorMap[post.status]}>{statusLabelMap[post.status]}</Tag>
                       <Tag>{post.crop_type}</Tag>

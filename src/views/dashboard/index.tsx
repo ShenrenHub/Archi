@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Empty, Pagination, Tag } from "antd";
-import { AlertOutlined, ApiOutlined, DownOutlined, ReloadOutlined, UpOutlined } from "@ant-design/icons";
+import { AlertOutlined, ApiOutlined, CameraOutlined, DownOutlined, ReloadOutlined, RobotOutlined, SyncOutlined, UpOutlined } from "@ant-design/icons";
 import type { EChartsOption } from "echarts";
 import ReactECharts from "echarts-for-react";
 import dayjs from "dayjs";
@@ -615,10 +615,10 @@ export default function DashboardPage() {
         {collapsedDataPanel ? null : (
           <div className="grid gap-4">
             <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[24px] border border-slate-200/80 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5">
+              <div className="community-surface rounded-[30px] border border-white/60 p-4 dark:border-white/10">
                 <h3 className="mb-4 text-base font-semibold text-slate-950 dark:text-white">当前联调上下文</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-[24px] bg-white/70 p-4 dark:bg-slate-900/60">
+                  <div className="community-surface rounded-[24px] border border-white/60 p-4 dark:border-white/10">
                     <p className="text-sm text-slate-500 dark:text-slate-300">当前农场</p>
                     <p className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
                       {farms.find((farm) => farm.id === farmId)?.farmName ?? `农场 ${farmId}`}
@@ -638,7 +638,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-slate-200/80 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5">
+              <div className="community-surface rounded-[30px] border border-white/60 p-4 dark:border-white/10">
                 <h3 className="mb-4 text-base font-semibold text-slate-950 dark:text-white">最新 WebSocket 遥测</h3>
                 {lastMessage ? (
                   <div className="rounded-[24px] bg-emerald-500/10 p-4">
@@ -655,7 +655,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-              <div className="min-h-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5">
+              <div className="min-h-0 overflow-hidden community-surface rounded-[30px] border border-white/60 p-4 dark:border-white/10">
                 <h3 className="mb-4 text-base font-semibold text-slate-950 dark:text-white">大棚概览数据</h3>
                 <DashboardDataTable
                   data={overview}
@@ -672,7 +672,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="min-h-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5">
+              <div className="min-h-0 overflow-hidden community-surface rounded-[30px] border border-white/60 p-4 dark:border-white/10">
                 <h3 className="mb-4 text-base font-semibold text-slate-950 dark:text-white">最近遥测与告警</h3>
                 <DashboardDataTable
                   data={latestTelemetry}
@@ -689,7 +689,7 @@ export default function DashboardPage() {
                 />
               </div>
 
-              <div className="min-h-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white/60 p-4 dark:border-white/8 dark:bg-white/5 xl:col-span-2">
+              <div className="min-h-0 overflow-hidden community-surface rounded-[30px] border border-white/60 p-4 dark:border-white/10 xl:col-span-2">
                 <h3 className="mb-4 text-base font-semibold text-slate-950 dark:text-white">告警列表（最近 {DASHBOARD_ALERT_LIMIT} 条）</h3>
                 <DashboardDataTable
                   data={alerts}
