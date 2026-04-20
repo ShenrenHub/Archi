@@ -26,8 +26,8 @@ export default function ExpertReviewPage() {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-      <AppCard title="提交专家复核">
+    <div className="expressive-page grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+      <AppCard variant="expressive" title="提交专家复核">
         <Form form={form} layout="vertical" onFinish={(values) => void handleSubmit(values)} initialValues={{ farmId, expertUserId: userId, reviewDecision: "CONFIRMED" }}>
           <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
           <Form.Item label="结果记录 ID" name="resultId" rules={[{ required: true }]}><InputNumber className="!w-full" /></Form.Item>
@@ -42,7 +42,7 @@ export default function ExpertReviewPage() {
         </Form>
       </AppCard>
 
-      <AppCard title="当前页面说明">
+      <AppCard variant="expressive" title="当前页面说明">
         <div className="space-y-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
           <p>后端文档目前只提供“提交复核”接口，没有单独的复核任务查询接口，所以这里直接面向 `resultId` 提交复核。</p>
           <p>通常流程是：视觉任务创建 → AI 回调写回结果 → 专家在本页用结果记录 ID 提交复核意见。</p>

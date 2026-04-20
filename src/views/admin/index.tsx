@@ -59,8 +59,8 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <AppCard title="农场与平台 API 总控台">
+    <div className="expressive-page space-y-4">
+      <AppCard variant="expressive" title="农场与平台 API 总控台">
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-[24px] bg-gradient-to-br from-slate-900 to-slate-700 p-5 text-white">
             <p className="text-sm text-slate-300">可见农场</p>
@@ -84,7 +84,7 @@ export default function AdminPage() {
             label: "农场与大棚",
             children: (
               <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-                <AppCard title="创建农场 / 大棚">
+                <AppCard variant="expressive" title="创建农场 / 大棚">
                   <Form form={farmForm} layout="vertical" onFinish={(values) => void runSubmit("farm", async () => {
                     await createFarm(values);
                     farmForm.resetFields();
@@ -115,7 +115,7 @@ export default function AdminPage() {
                   </Form>
                 </AppCard>
 
-                <AppCard title="当前农场与大棚">
+                <AppCard variant="expressive" title="当前农场与大棚">
                   <Table rowKey="id" dataSource={farms} pagination={false} columns={[{ title: "农场 ID", dataIndex: "id" }, { title: "编码", dataIndex: "farmCode" }, { title: "名称", dataIndex: "farmName" }, { title: "负责人", dataIndex: "ownerName" }]} />
                   <div className="mt-4" />
                   <Table rowKey="id" dataSource={greenhouses} pagination={false} columns={[{ title: "大棚 ID", dataIndex: "id" }, { title: "名称", dataIndex: "greenhouseName" }, { title: "编码", dataIndex: "greenhouseCode" }, { title: "类型", dataIndex: "greenhouseType" }]} />
@@ -128,7 +128,7 @@ export default function AdminPage() {
             label: "设备与绑定",
             children: (
               <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-                <AppCard title="注册设备 / 绑定大棚">
+                <AppCard variant="expressive" title="注册设备 / 绑定大棚">
                   <Form form={deviceForm} layout="vertical" onFinish={(values) => void runSubmit("device", async () => {
                     await registerDevice(values);
                     deviceForm.resetFields();
@@ -160,7 +160,7 @@ export default function AdminPage() {
                   </Form>
                 </AppCard>
 
-                <AppCard title="设备列表">
+                <AppCard variant="expressive" title="设备列表">
                   <Table rowKey="id" dataSource={devices} pagination={false} scroll={{ y: 420 }} columns={[{ title: "名称", dataIndex: "deviceName" }, { title: "编码", dataIndex: "deviceCode" }, { title: "大棚", dataIndex: "greenhouseId" }, { title: "协议", dataIndex: "protocolType" }, { title: "在线状态", dataIndex: "onlineStatus" }]} />
                 </AppCard>
               </div>
@@ -171,7 +171,7 @@ export default function AdminPage() {
             label: "平台配置",
             children: (
               <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-                <AppCard title="写入平台配置">
+                <AppCard variant="expressive" title="写入平台配置">
                   <Form form={configForm} layout="vertical" onFinish={(values) => void runSubmit("config", async () => {
                     await createPlatformConfig(values);
                     configForm.resetFields();
@@ -185,7 +185,7 @@ export default function AdminPage() {
                   </Form>
                 </AppCard>
 
-                <AppCard title="平台配置列表">
+                <AppCard variant="expressive" title="平台配置列表">
                   <Table rowKey="id" dataSource={configs} pagination={false} scroll={{ y: 420 }} columns={[{ title: "ID", dataIndex: "id" }, { title: "Key", dataIndex: "configKey" }, { title: "Value", dataIndex: "configValue" }, { title: "Scope", dataIndex: "configScope" }, { title: "更新时间", render: (_, record) => formatDateTime(record.updatedAt) }]} />
                 </AppCard>
               </div>

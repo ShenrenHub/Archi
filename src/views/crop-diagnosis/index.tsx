@@ -336,6 +336,7 @@ export default function CropDiagnosisPage() {
   const listView = (
     <div className="space-y-5">
       <AppCard
+        variant="expressive"
         title="智能诊断记录"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={startNewDiagnosis}>
@@ -357,7 +358,7 @@ export default function CropDiagnosisPage() {
 
   const uploadContent = (
     <div className="mx-auto max-w-3xl">
-      <AppCard title="上传作物图片">
+      <AppCard variant="expressive" title="上传作物图片">
         <div className="flex flex-col items-center gap-6 py-6">
           <Upload.Dragger
             name="file"
@@ -404,7 +405,7 @@ export default function CropDiagnosisPage() {
   const aiAnalysisContent = (
     <div className="mx-auto max-w-4xl space-y-5">
       {aiLoading && (
-        <AppCard title="AI 分析中">
+        <AppCard variant="expressive" title="AI 分析中">
           <div className="py-8 text-center">
             <RobotOutlined className="mb-4 text-5xl text-emerald-500" />
             <p className="mb-4 text-lg font-medium">AI 正在分析作物图片，请稍候...</p>
@@ -426,6 +427,7 @@ export default function CropDiagnosisPage() {
       {!aiLoading && currentRecord?.aiResult && (
         <>
           <AppCard
+            variant="expressive"
             title="AI 初步判断结果"
             extra={
               <Tag color="success" className="text-sm">
@@ -502,7 +504,7 @@ export default function CropDiagnosisPage() {
 
   const submittedContent = (
     <div className="mx-auto max-w-3xl">
-      <AppCard title="复核提交成功">
+      <AppCard variant="expressive" title="复核提交成功">
         <div className="py-10 text-center">
           <CheckCircleOutlined className="mb-4 text-5xl text-emerald-500" />
           <p className="text-lg font-medium">已提交专家复核</p>
@@ -523,12 +525,12 @@ export default function CropDiagnosisPage() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="expressive-page space-y-5">
       {viewMode === "list" && listView}
 
       {viewMode === "flow" && (
         <>
-          <AppCard className="!py-4">
+          <AppCard variant="expressive" className="!py-4">
             <div className="overflow-x-auto pb-2">
               <Steps current={currentStep} size="default" className="min-w-[520px] max-w-4xl mx-auto">
                 <Step

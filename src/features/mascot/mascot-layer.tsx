@@ -205,10 +205,12 @@ export function MascotLayer({ dark }: { dark: boolean }) {
     speechRef.current = line;
     setSpeech(line);
     window.clearTimeout(speechTimeoutRef.current);
-    speechTimeoutRef.current = window.setTimeout(() => {
-      speechRef.current = "";
-      setSpeech("");
-    }, durationMs);
+    if (durationMs > 0) {
+      speechTimeoutRef.current = window.setTimeout(() => {
+        speechRef.current = "";
+        setSpeech("");
+      }, durationMs);
+    }
     nextSpeakAtRef.current = performance.now() + randInt(AUTO_SPEAK_MIN_MS, AUTO_SPEAK_MAX_MS);
   };
 
@@ -425,7 +427,7 @@ export function MascotLayer({ dark }: { dark: boolean }) {
             return;
           }
 
-          showSpeechRef.current("让我想一下...", 1500);
+          showSpeechRef.current("让我想一下，可能要十几秒。", 30000);
           const decision = await requestDecision("click");
 
           if (decision) {
@@ -433,7 +435,7 @@ export function MascotLayer({ dark }: { dark: boolean }) {
             return;
           }
 
-          showSpeechRef.current(randomItem(phrasePool));
+          showSpeechRef.current("刚才没想明白，你再戳我一下。", 2200);
         }}
         aria-label="筑泥魔"
       >

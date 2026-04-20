@@ -7,10 +7,11 @@ interface StatCardProps {
   suffix?: string;
   icon: ReactNode;
   highlight?: string;
+  variant?: "default" | "expressive";
 }
 
-export const StatCard = ({ title, value, suffix, icon, highlight }: StatCardProps) => (
-  <AppCard className="overflow-hidden">
+export const StatCard = ({ title, value, suffix, icon, highlight, variant = "default" }: StatCardProps) => (
+  <AppCard variant={variant} className="overflow-hidden">
     <div className="flex items-start justify-between gap-4">
       <div className="min-w-0">
         <p className="text-sm text-slate-500 dark:text-slate-300">{title}</p>

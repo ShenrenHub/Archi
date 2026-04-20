@@ -25,8 +25,8 @@ export default function VisionAnalysisPage() {
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
-      <AppCard title="AI 结果回调写回">
+    <div className="expressive-page grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+      <AppCard variant="expressive" title="AI 结果回调写回">
         <Form form={form} layout="vertical" onFinish={(values) => void handleSubmit(values)} initialValues={{ farmId, abnormalFlag: 1, confidenceScore: 0.92, resultJson: '{"severity":"HIGH"}' }}>
           <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
           <Form.Item label="任务 ID" name="taskId" rules={[{ required: true }]}><InputNumber className="!w-full" /></Form.Item>
@@ -38,7 +38,7 @@ export default function VisionAnalysisPage() {
         </Form>
       </AppCard>
 
-      <AppCard title="对接说明">
+      <AppCard variant="expressive" title="对接说明">
         <div className="space-y-4 text-sm leading-7 text-slate-600 dark:text-slate-300">
           <p>这里对接的是 `PATCH /api/vision/tasks/callback`，更偏向 AI 适配器或平台回调能力。</p>
           <p>提交成功后，后端会返回结果记录 ID，后续专家复核页面需要使用这个 `resultId`。</p>

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, Switch, Tag } from "antd";
 import {
   BulbOutlined,
@@ -47,6 +47,22 @@ type SmartDataCardOfType<T extends SmartDataCardType> = SmartDataCardItem & {
 interface CardDensity {
   compact: boolean;
   ultraCompact: boolean;
+  widthUnits: number;
+  heightUnits: number;
+  pixelWidth: number | null;
+  pixelHeight: number | null;
+}
+
+interface CardFrameSize {
+  width: number | null;
+  height: number | null;
+}
+
+interface CardSpaceRequirement {
+  minW?: number;
+  minH?: number;
+  minPixelW?: number;
+  minPixelH?: number;
 }
 
 interface SmartDataCardFrameProps {
@@ -124,18 +140,57 @@ const CARD_THEME: Record<
   }
 };
 
-const resolveCardDensity = (card: SmartDataCardItem): CardDensity => {
+const resolveCardDensity = (
+  card: SmartDataCardItem,
+  frameSize: CardFrameSize = { width: null, height: null }
+): CardDensity => {
+  const widthUnits = card.layout.w;
+  const heightUnits = card.layout.h;
+  const pixelWidth = frameSize.width;
+  const pixelHeight = frameSize.height;
   const ultraCompact =
-    card.layout.h <= SMART_DATA_CARD_MIN_HEIGHT || card.layout.w <= SMART_DATA_CARD_MIN_WIDTH;
+    heightUnits <= SMART_DATA_CARD_MIN_HEIGHT ||
+    widthUnits <= SMART_DATA_CARD_MIN_WIDTH ||
+    (pixelWidth !== null && pixelWidth < 210) ||
+    (pixelHeight !== null && pixelHeight < 175);
   const compact =
     ultraCompact ||
-    card.layout.h <= SMART_DATA_CARD_MIN_HEIGHT + 1 ||
-    card.layout.w <= SMART_DATA_CARD_MIN_WIDTH + 2;
+    heightUnits <= SMART_DATA_CARD_MIN_HEIGHT + 1 ||
+    widthUnits <= SMART_DATA_CARD_MIN_WIDTH + 2 ||
+    (pixelWidth !== null && pixelWidth < 300) ||
+    (pixelHeight !== null && pixelHeight < 240);
 
   return {
     compact,
-    ultraCompact
+    ultraCompact,
+    widthUnits,
+    heightUnits,
+    pixelWidth,
+    pixelHeight
   };
+};
+
+const hasCardSpace = (
+  density: CardDensity,
+  { minW, minH, minPixelW, minPixelH }: CardSpaceRequirement
+) => {
+  if (minW !== undefined && density.widthUnits < minW) {
+    return false;
+  }
+
+  if (minH !== undefined && density.heightUnits < minH) {
+    return false;
+  }
+
+  if (minPixelW !== undefined && density.pixelWidth !== null && density.pixelWidth < minPixelW) {
+    return false;
+  }
+
+  if (minPixelH !== undefined && density.pixelHeight !== null && density.pixelHeight < minPixelH) {
+    return false;
+  }
+
+  return true;
 };
 
 const formatMetricValue = (value: number) => {
@@ -182,15 +237,23 @@ const DataMessage = ({ message }: { message: string }) => (
   </div>
 );
 
-const DataLoadingState = ({ compact = false }: { compact?: boolean }) => (
+const DataLoadingState = ({
+  compact = false,
+  minimal = false
+}: {
+  compact?: boolean;
+  minimal?: boolean;
+}) => (
   <div className={clsx("space-y-4", compact ? "pt-2" : "")}>
-    <div className="h-7 w-24 animate-pulse rounded-full bg-white/80 dark:bg-white/10" />
-    <div className="h-16 animate-pulse rounded-[20px] bg-white/80 dark:bg-white/10" />
-    <div className={clsx("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
-      <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
-      <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
-      {!compact ? <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" /> : null}
-    </div>
+    <div className={clsx("animate-pulse rounded-full bg-white/80 dark:bg-white/10", minimal ? "h-5 w-16" : "h-7 w-24")} />
+    <div className={clsx("animate-pulse rounded-[20px] bg-white/80 dark:bg-white/10", minimal ? "h-12" : "h-16")} />
+    {!minimal ? (
+      <div className={clsx("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
+        <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
+        <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
+        {!compact ? <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" /> : null}
+      </div>
+    ) : null}
   </div>
 );
 
@@ -218,10 +281,77 @@ const SmartDataCardFrame = ({
   headerExtra,
   children
 }: SmartDataCardFrameProps) => {
-  const { compact, ultraCompact } = resolveCardDensity(card);
+  const articleRef = useRef<HTMLElement | null>(null);
+  const [frameSize, setFrameSize] = useState<CardFrameSize>({
+    width: null,
+    height: null
+  });
+  const density = resolveCardDensity(card, frameSize);
+  const { compact, ultraCompact } = density;
+  const showHeaderDescription = hasCardSpace(density, {
+    minW: 4,
+    minH: 4,
+    minPixelW: 280,
+    minPixelH: 220
+  });
+
+  useEffect(() => {
+    const node = articleRef.current;
+
+    if (!node) {
+      return;
+    }
+
+    const updateSize = (width: number, height: number) => {
+      setFrameSize((current) => {
+        const nextWidth = Math.round(width);
+        const nextHeight = Math.round(height);
+
+        if (current.width === nextWidth && current.height === nextHeight) {
+          return current;
+        }
+
+        return {
+          width: nextWidth,
+          height: nextHeight
+        };
+      });
+    };
+
+    updateSize(node.clientWidth, node.clientHeight);
+
+    let rafId: number | null = null;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+
+      if (!entry) {
+        return;
+      }
+
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+
+      rafId = window.requestAnimationFrame(() => {
+        updateSize(entry.contentRect.width, entry.contentRect.height);
+        rafId = null;
+      });
+    });
+
+    observer.observe(node);
+
+    return () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <article
+      ref={articleRef}
       className={clsx(
         "relative flex h-full flex-col overflow-hidden rounded-[28px] border shadow-sm backdrop-blur-xl transition dark:shadow-none",
         ultraCompact ? "p-3.5" : compact ? "p-4" : "p-5",
@@ -249,7 +379,7 @@ const SmartDataCardFrame = ({
             >
               {title}
             </p>
-            {!compact ? (
+            {showHeaderDescription ? (
               <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-300">
                 {description}
               </p>
@@ -275,7 +405,7 @@ const SmartDataCardFrame = ({
           ultraCompact ? "mt-3 gap-2" : compact ? "mt-5 gap-4" : "mt-8 gap-6"
         )}
       >
-        {children({ compact, ultraCompact })}
+        {children(density)}
       </div>
     </article>
   );
@@ -294,12 +424,6 @@ const SmartDataMetricCard = ({
   const theme = CARD_THEME[card.type];
   const metricKey = card.type === "light" ? "light" : card.type;
   const metric = runtime.metrics[metricKey];
-  const flowLabel =
-    runtime.socketState === "online"
-      ? "实时流"
-      : runtime.loading
-        ? "同步中"
-        : "轮询";
 
   return (
     <SmartDataCardFrame
@@ -310,15 +434,52 @@ const SmartDataMetricCard = ({
       shellClassName={theme.shellClassName}
       iconClassName={theme.iconClassName}
       onRemove={onRemove}
-      headerExtra={!resolveCardDensity(card).ultraCompact ? <Tag color="processing">{flowLabel}</Tag> : null}
     >
-      {({ compact, ultraCompact }) => {
+      {(density) => {
+        const { compact, ultraCompact } = density;
+        const flowLabel =
+          runtime.socketState === "online"
+            ? "实时流"
+            : runtime.loading
+              ? "同步中"
+              : "轮询";
+        const showFlowTag = hasCardSpace(density, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 240,
+          minPixelH: 180
+        });
+        const showMetricLead = hasCardSpace(density, {
+          minW: 3,
+          minH: 3,
+          minPixelW: 180,
+          minPixelH: 150
+        });
+        const showCompactMeta = hasCardSpace(density, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 260,
+          minPixelH: 220
+        });
+        const showDetailedMeta = hasCardSpace(density, {
+          minW: 6,
+          minH: 4,
+          minPixelW: 420,
+          minPixelH: 300
+        });
+        const showValueUnit = hasCardSpace(density, {
+          minW: 2,
+          minH: 2,
+          minPixelW: 120,
+          minPixelH: 120
+        });
+
         if (!runtime.farmId) {
           return <DataMessage message={`当前未绑定农场，无法装载${definition.label}。`} />;
         }
 
         if (runtime.loading && !metric) {
-          return <DataLoadingState compact={compact} />;
+          return <DataLoadingState compact={compact} minimal={!showCompactMeta} />;
         }
 
         if (!metric) {
@@ -327,11 +488,19 @@ const SmartDataMetricCard = ({
 
         return (
           <>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-300">
-                Real-Time Metric
-              </p>
-              <div className="mt-4 flex flex-wrap items-end gap-3">
+            {showFlowTag ? (
+              <div className="flex justify-end">
+                <Tag color="processing">{flowLabel}</Tag>
+              </div>
+            ) : null}
+
+            <div className={showFlowTag ? "" : "pt-1"}>
+              {showMetricLead ? (
+                <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-300">
+                  Real-Time Metric
+                </p>
+              ) : null}
+              <div className={clsx("flex flex-wrap items-end gap-3", showMetricLead ? "mt-4" : "mt-1")}>
                 <span
                   className={clsx(
                     ultraCompact
@@ -344,23 +513,20 @@ const SmartDataMetricCard = ({
                 >
                   {formatMetricValue(metric.metricValue)}
                 </span>
-                <span
-                  className={clsx(
-                    "font-medium text-slate-500 dark:text-slate-300",
-                    ultraCompact ? "pb-0 text-sm" : compact ? "pb-0.5 text-base" : "pb-1 text-lg"
-                  )}
-                >
-                  {metric.unit || definition.defaultUnit}
-                </span>
+                {showValueUnit ? (
+                  <span
+                    className={clsx(
+                      "font-medium text-slate-500 dark:text-slate-300",
+                      ultraCompact ? "pb-0 text-sm" : compact ? "pb-0.5 text-base" : "pb-1 text-lg"
+                    )}
+                  >
+                    {metric.unit || definition.defaultUnit}
+                  </span>
+                ) : null}
               </div>
             </div>
 
-            {ultraCompact ? null : compact ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MetaPlate label="设备" value={String(metric.deviceId)} />
-                <MetaPlate label="更新" value={formatDateTime(metric.collectedAt)} />
-              </div>
-            ) : (
+            {showDetailedMeta ? (
               <>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <MetaPlate label="农场" value={runtime.farmName} />
@@ -377,7 +543,12 @@ const SmartDataMetricCard = ({
                   </p>
                 </div>
               </>
-            )}
+            ) : showCompactMeta ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MetaPlate label="设备" value={String(metric.deviceId)} />
+                <MetaPlate label="更新" value={formatDateTime(metric.collectedAt)} />
+              </div>
+            ) : null}
           </>
         );
       }}
@@ -581,15 +752,49 @@ const SmartDataTelemetryChartCard = ({
       shellClassName={theme.shellClassName}
       iconClassName={theme.iconClassName}
       onRemove={onRemove}
-      headerExtra={!density.ultraCompact ? <Tag color="green">趋势</Tag> : null}
     >
-      {({ compact, ultraCompact }) => {
+      {(cardDensity) => {
+        const { compact, ultraCompact } = cardDensity;
+        const showTrendTag = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 230,
+          minPixelH: 180
+        });
+        const showSummary = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 260,
+          minPixelH: 220
+        });
+        const showMetricTag = hasCardSpace(cardDensity, {
+          minW: 6,
+          minH: 4,
+          minPixelW: 360,
+          minPixelH: 260
+        });
+        const chartMinHeight = hasCardSpace(cardDensity, {
+          minW: 5,
+          minH: 4,
+          minPixelW: 360,
+          minPixelH: 300
+        })
+          ? 220
+          : hasCardSpace(cardDensity, {
+                minW: 3,
+                minH: 3,
+                minPixelW: 220,
+                minPixelH: 180
+              })
+            ? 140
+            : 72;
+
         if (!runtime.farmId) {
           return <DataMessage message="当前未绑定农场，无法装载遥测曲线。" />;
         }
 
         if (runtime.loading && runtime.telemetryHistory.length === 0) {
-          return <DataLoadingState compact={compact} />;
+          return <DataLoadingState compact={compact} minimal={!showSummary} />;
         }
 
         if (!telemetryChartOption) {
@@ -598,7 +803,13 @@ const SmartDataTelemetryChartCard = ({
 
         return (
           <div className="flex h-full min-h-0 flex-1 flex-col">
-            {!ultraCompact ? (
+            {showTrendTag ? (
+              <div className="mb-1 flex justify-end">
+                <Tag color="green">趋势</Tag>
+              </div>
+            ) : null}
+
+            {showSummary ? (
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
@@ -608,7 +819,7 @@ const SmartDataTelemetryChartCard = ({
                     最近 {runtime.telemetryHistory.length} 个采样点
                   </p>
                 </div>
-                {!compact ? <Tag color="processing">温 / 湿 / 光</Tag> : null}
+                {showMetricTag ? <Tag color="processing">温 / 湿 / 光</Tag> : null}
               </div>
             ) : null}
 
@@ -617,7 +828,7 @@ const SmartDataTelemetryChartCard = ({
                 option={telemetryChartOption}
                 style={{
                   height: "100%",
-                  minHeight: ultraCompact ? 90 : compact ? 140 : 220,
+                  minHeight: chartMinHeight,
                   width: "100%"
                 }}
                 opts={{ renderer: "canvas" }}
@@ -646,7 +857,6 @@ const SmartDataBoardLightCard = ({
   const definition = getCardDefinition(card.type);
   const theme = CARD_THEME[card.type];
   const boardLight = runtime.boardLight;
-  const density = resolveCardDensity(card);
 
   return (
     <SmartDataCardFrame
@@ -657,15 +867,46 @@ const SmartDataBoardLightCard = ({
       shellClassName={theme.shellClassName}
       iconClassName={theme.iconClassName}
       onRemove={onRemove}
-      headerExtra={
-        !density.ultraCompact ? (
-          <Tag color={boardLight.online ? "green" : "default"}>
-            {boardLight.online ? "在线" : "离线"}
-          </Tag>
-        ) : null
-      }
     >
-      {({ compact, ultraCompact }) => {
+      {(cardDensity) => {
+        const { compact, ultraCompact } = cardDensity;
+        const showOnlineTag = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 240,
+          minPixelH: 180
+        });
+        const showStatusPanel = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 240,
+          minPixelH: 200
+        });
+        const showLedBadge = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 260,
+          minPixelH: 210
+        });
+        const showMetaGrid = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 4,
+          minPixelW: 280,
+          minPixelH: 270
+        });
+        const showGreenhouseMeta = hasCardSpace(cardDensity, {
+          minW: 6,
+          minH: 4,
+          minPixelW: 380,
+          minPixelH: 280
+        });
+        const showSwitchHelper = hasCardSpace(cardDensity, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 260,
+          minPixelH: 220
+        });
+
         if (!runtime.farmId) {
           return <DataMessage message="当前未绑定农场，无法下发开发板灯控命令。" />;
         }
@@ -674,42 +915,75 @@ const SmartDataBoardLightCard = ({
           return <DataMessage message="当前农场尚未接入 BearPi 开发板。" />;
         }
 
+        if (!showStatusPanel && !showMetaGrid) {
+          return (
+            <div className="flex h-full flex-1 items-center justify-between gap-3 rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+                  灯光状态
+                </p>
+                <p className="mt-2 truncate text-lg font-semibold text-slate-900 dark:text-white">
+                  {resolveBoardLightStateLabel(boardLight.state)}
+                </p>
+              </div>
+              <Switch
+                checked={boardLight.state === "ON"}
+                loading={boardLight.pending}
+                disabled={!boardLight.greenhouseId}
+                onChange={(checked) => void onToggleBoardLight(checked ? "ON" : "OFF")}
+              />
+            </div>
+          );
+        }
+
         return (
           <div className="flex h-full flex-1 flex-col justify-between gap-4">
-            <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
-                当前灯光状态
-              </p>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span
-                  className={clsx(
-                    "font-semibold tracking-[-0.03em] text-slate-900 dark:text-white",
-                    ultraCompact ? "text-2xl" : compact ? "text-3xl" : "text-4xl"
-                  )}
-                >
-                  {resolveBoardLightStateLabel(boardLight.state)}
-                </span>
-                <span
-                  className={clsx(
-                    "rounded-full border px-3 py-1 text-xs font-medium",
-                    boardLight.state === "ON"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/12 dark:text-emerald-100"
-                      : "border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
-                  )}
-                >
-                  {boardLight.state === "ON" ? "LED ON" : boardLight.state === "OFF" ? "LED OFF" : "未知"}
-                </span>
+            {showOnlineTag ? (
+              <div className="flex justify-end">
+                <Tag color={boardLight.online ? "green" : "default"}>
+                  {boardLight.online ? "在线" : "离线"}
+                </Tag>
               </div>
-            </div>
+            ) : null}
 
-            {!ultraCompact ? (
-              <div className={clsx("grid gap-3", compact ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+            {showStatusPanel ? (
+              <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+                  当前灯光状态
+                </p>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <span
+                    className={clsx(
+                      "font-semibold tracking-[-0.03em] text-slate-900 dark:text-white",
+                      ultraCompact ? "text-2xl" : compact ? "text-3xl" : "text-4xl"
+                    )}
+                  >
+                    {resolveBoardLightStateLabel(boardLight.state)}
+                  </span>
+                  {showLedBadge ? (
+                    <span
+                      className={clsx(
+                        "rounded-full border px-3 py-1 text-xs font-medium",
+                        boardLight.state === "ON"
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/12 dark:text-emerald-100"
+                          : "border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                      )}
+                    >
+                      {boardLight.state === "ON" ? "LED ON" : boardLight.state === "OFF" ? "LED OFF" : "未知"}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+
+            {showMetaGrid ? (
+              <div className={clsx("grid gap-3", showGreenhouseMeta ? "sm:grid-cols-3" : "sm:grid-cols-2")}>
                 <MetaPlate label="设备" value={boardLight.deviceName} />
                 <MetaPlate
                   label="控制状态"
                   value={boardLight.pending ? "命令处理中" : boardLight.online ? "可控制" : "等待设备上线"}
                 />
-                {!compact ? (
+                {showGreenhouseMeta ? (
                   <MetaPlate
                     label="绑定大棚"
                     value={boardLight.greenhouseId ? `#${boardLight.greenhouseId}` : "未绑定"}
@@ -721,7 +995,7 @@ const SmartDataBoardLightCard = ({
             <div className="flex items-center justify-between rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
               <div>
                 <p className="text-sm font-semibold text-slate-900 dark:text-white">灯光开关</p>
-                {!ultraCompact ? (
+                {showSwitchHelper ? (
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
                     通过 MQTT 指令控制 BearPi 开发板上的 LED。
                   </p>
@@ -779,38 +1053,79 @@ const SmartDataActionCard = ({
       iconClassName={theme.iconClassName}
       onRemove={onRemove}
     >
-      {({ compact, ultraCompact }) => (
-        <div className="flex h-full flex-1 flex-col justify-between">
-          <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
-            <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
-              {config.helperLabel}
-            </p>
-            <p
-              className={clsx(
-                "mt-3 font-semibold tracking-[-0.03em] text-slate-900 dark:text-white",
-                ultraCompact ? "text-xl" : compact ? "text-2xl" : "text-3xl"
-              )}
-            >
-              {definition.label}
-            </p>
-            {!compact ? (
-              <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-slate-300">
-                {definition.description}
-              </p>
-            ) : null}
-          </div>
+      {(density) => {
+        const { compact, ultraCompact } = density;
+        const showActionPanel = hasCardSpace(density, {
+          minW: 4,
+          minH: 4,
+          minPixelW: 250,
+          minPixelH: 240
+        });
+        const showHelperLabel = hasCardSpace(density, {
+          minW: 4,
+          minH: 3,
+          minPixelW: 220,
+          minPixelH: 180
+        });
+        const showDescription = hasCardSpace(density, {
+          minW: 6,
+          minH: 4,
+          minPixelW: 360,
+          minPixelH: 260
+        });
 
-          <Button
-            type="primary"
-            size={ultraCompact ? "middle" : "large"}
-            icon={theme.icon}
-            onClick={config.action}
-            className="smart-data-card-action mt-4"
-          >
-            {config.buttonLabel}
-          </Button>
-        </div>
-      )}
+        if (!showActionPanel) {
+          return (
+            <div className="flex h-full flex-1 items-center justify-center">
+              <Button
+                type="primary"
+                size="middle"
+                icon={theme.icon}
+                onClick={config.action}
+                className="smart-data-card-action"
+              >
+                {config.buttonLabel}
+              </Button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="flex h-full flex-1 flex-col justify-between">
+            <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+              {showHelperLabel ? (
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+                  {config.helperLabel}
+                </p>
+              ) : null}
+              <p
+                className={clsx(
+                  "font-semibold tracking-[-0.03em] text-slate-900 dark:text-white",
+                  showHelperLabel ? "mt-3" : "",
+                  ultraCompact ? "text-xl" : compact ? "text-2xl" : "text-3xl"
+                )}
+              >
+                {definition.label}
+              </p>
+              {showDescription ? (
+                <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-slate-300">
+                  {definition.description}
+                </p>
+              ) : null}
+            </div>
+
+            <Button
+              type="primary"
+              size={ultraCompact ? "middle" : "large"}
+              icon={theme.icon}
+              onClick={config.action}
+              className="smart-data-card-action mt-4"
+            >
+              {config.buttonLabel}
+            </Button>
+          </div>
+        );
+      }}
     </SmartDataCardFrame>
   );
 };

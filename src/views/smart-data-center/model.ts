@@ -17,7 +17,7 @@ export const SMART_DATA_GRID_ROW_HEIGHT = 72;
 export const SMART_DATA_GRID_MARGIN: readonly [number, number] = [16, 16];
 export const SMART_DATA_CARD_DEFAULT_WIDTH = 12;
 export const SMART_DATA_CARD_DEFAULT_HEIGHT = 4;
-export const SMART_DATA_CARD_MIN_WIDTH = 4;
+export const SMART_DATA_CARD_MIN_WIDTH = 2;
 export const SMART_DATA_CARD_MIN_HEIGHT = 2;
 
 interface SmartDataCardPreset {
@@ -124,7 +124,11 @@ const SMART_DATA_CARD_PRESETS: SmartDataCardPreset[] = [
     height: 3
   },
   {
-    width: SMART_DATA_CARD_MIN_WIDTH,
+    width: 4,
+    height: 3
+  },
+  {
+    width: 3,
     height: 3
   },
   {

@@ -5,12 +5,15 @@ interface AppCardProps extends PropsWithChildren {
   title?: string;
   extra?: ReactNode;
   className?: string;
+  variant?: "default" | "expressive";
 }
 
-export const AppCard = ({ title, extra, className, children }: AppCardProps) => (
+export const AppCard = ({ title, extra, className, variant = "default", children }: AppCardProps) => (
   <section
     className={clsx(
-      "rounded-[28px] border border-slate-200/70 bg-white/78 p-4 shadow-panel backdrop-blur-xl transition dark:border-white/8 dark:bg-slate-950/72 sm:p-5 lg:p-6",
+      variant === "expressive"
+        ? "community-surface rounded-[36px] border border-white/60 p-4 dark:border-white/10 sm:p-5 lg:p-6"
+        : "rounded-[28px] border border-slate-200/70 bg-white/78 p-4 shadow-panel backdrop-blur-xl transition dark:border-white/8 dark:bg-slate-950/72 sm:p-5 lg:p-6",
       className
     )}
   >

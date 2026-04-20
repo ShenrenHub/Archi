@@ -226,21 +226,23 @@ export const AppLayout = () => {
           )}
 
           {showTopHeader && (
-            <header className="sticky top-0 z-20 mx-3 mt-3 rounded-[28px] border border-white/15 bg-white/72 px-4 py-4 shadow-panel backdrop-blur-xl dark:border-white/8 dark:bg-slate-950/72 lg:mx-0 lg:mt-4 lg:flex lg:min-h-[110px] lg:items-center lg:justify-between lg:gap-4 lg:px-6 lg:py-5">
+            <header className="sticky top-0 z-20 mx-3 mt-3 rounded-[28px] border border-slate-200/80 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 lg:mx-0 lg:mt-4 lg:flex lg:min-h-[96px] lg:items-center lg:justify-between lg:gap-4 lg:px-6 lg:py-5">
               <div className="flex items-start justify-between gap-3 lg:block">
                 <div>
                   <Breadcrumb items={breadcrumbItems} />
                   <div className="mt-2 flex flex-wrap items-center gap-2 lg:gap-3">
-                    <h2 className="text-xl font-semibold text-slate-900 dark:text-white lg:text-2xl">
+                    <h2 className="text-2xl font-medium tracking-tight text-slate-900 dark:text-white lg:text-[1.75rem]">
                       {consoleExperience.title}
                     </h2>
-                    <Tag color="green">{consoleExperience.subtitle}</Tag>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-0.5 text-xs font-medium text-emerald-800 dark:border-emerald-800/40 dark:bg-emerald-900/30 dark:text-emerald-300">
+                      {consoleExperience.subtitle}
+                    </span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setMobileNavOpen(true)}
-                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-lg text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.12)] backdrop-blur-md transition active:scale-95 dark:border-white/12 dark:bg-slate-900/80 dark:text-slate-100 lg:hidden"
+                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-lg text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.12)] transition active:scale-95 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 lg:hidden"
                 >
                   <MenuOutlined />
                 </button>
@@ -257,7 +259,7 @@ export const AppLayout = () => {
                     allowClear
                   />
                 </div>
-                <div className="rounded-2xl border border-slate-200/80 bg-white/60 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-950/88">
+                <div className="rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-2 text-sm dark:border-slate-700 dark:bg-slate-800">
                   <div className="font-medium text-slate-900 dark:text-white">{displayName || username}</div>
                   <div className="text-slate-500 dark:text-slate-300">演示上下文 · 免登录访问</div>
                 </div>

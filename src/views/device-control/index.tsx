@@ -236,9 +236,10 @@ export default function DeviceControlPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="expressive-page space-y-4">
       <AppCard
         title="设备控制"
+        variant="expressive"
         extra={
           <Button icon={<ReloadOutlined />} loading={refreshing} onClick={() => void loadData()}>
             刷新
@@ -262,7 +263,7 @@ export default function DeviceControlPage() {
             return (
               <div
                 key={item.definition.key}
-                className="flex flex-col gap-4 rounded-[24px] border border-slate-200/80 bg-white/72 p-4 dark:border-white/8 dark:bg-slate-950/60 sm:flex-row sm:items-center sm:justify-between"
+                className="community-surface flex flex-col gap-4 rounded-[30px] border border-white/60 p-4 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
@@ -340,14 +341,14 @@ export default function DeviceControlPage() {
 
                 <div className="space-y-3">
                   {rules.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-slate-300/80 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-300">
+                    <div className="rounded-[24px] border border-dashed border-slate-300/80 px-4 py-6 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-300">
                       暂无联动规则。
                     </div>
                   ) : (
                     rules.map((rule) => (
                       <div
                         key={rule.id}
-                        className="flex flex-col gap-2 rounded-2xl border border-slate-200/80 px-4 py-3 dark:border-white/8"
+                        className="community-surface flex flex-col gap-2 rounded-[24px] border border-white/60 px-4 py-3 dark:border-white/10"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="text-sm font-medium text-slate-900 dark:text-white">

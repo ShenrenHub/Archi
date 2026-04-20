@@ -530,7 +530,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
+    <div className="expressive-page grid gap-4 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
       <div className="grid gap-4 xl:grid-cols-4">
         <StatCard
           title="实时温度"
@@ -538,6 +538,7 @@ export default function DashboardPage() {
           suffix={stats.temperature?.unit || "°C"}
           highlight={stats.temperature ? `${dayjs(stats.temperature.collectedAt).format("HH:mm:ss")} 更新` : "等待实时温度"}
           icon={<ApiOutlined />}
+          variant="expressive"
         />
         <StatCard
           title="实时湿度"
@@ -545,6 +546,7 @@ export default function DashboardPage() {
           suffix={stats.humidity?.unit || "%"}
           highlight={stats.humidity ? `${dayjs(stats.humidity.collectedAt).format("HH:mm:ss")} 更新` : "等待实时湿度"}
           icon={<ApiOutlined />}
+          variant="expressive"
         />
         <StatCard
           title="实时光照强度"
@@ -552,12 +554,14 @@ export default function DashboardPage() {
           suffix={stats.lightLux?.unit || "Lux"}
           highlight={stats.lightLux ? `${dayjs(stats.lightLux.collectedAt).format("HH:mm:ss")} 更新` : "等待实时光照"}
           icon={<ApiOutlined />}
+          variant="expressive"
         />
-        <StatCard title="活跃告警" value={String(stats.activeAlerts)} highlight={`${stats.onlineDevices}/${stats.totalDevices} 台设备在线`} icon={<AlertOutlined />} />
+        <StatCard title="活跃告警" value={String(stats.activeAlerts)} highlight={`${stats.onlineDevices}/${stats.totalDevices} 台设备在线`} icon={<AlertOutlined />} variant="expressive" />
       </div>
 
       <AppCard
         title="实时遥测曲线"
+        variant="expressive"
         className="dashboard-telemetry-card relative overflow-hidden"
         extra={(
           <Tag className="dashboard-telemetry-tag !rounded-full !px-3 !py-1">
@@ -591,6 +595,7 @@ export default function DashboardPage() {
 
       <AppCard
         title="联调数据面板"
+        variant="expressive"
         extra={(
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void loadData()}>

@@ -69,7 +69,7 @@ export default function VisionPage() {
   const firstCamera = cameras[0];
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+    <div className="expressive-page grid gap-4 xl:grid-cols-[1fr_1fr]">
       <div className="space-y-4">
         <CameraPlayer
           title={firstCamera ? firstCamera.cameraName : "摄像头预览占位"}
@@ -78,7 +78,7 @@ export default function VisionPage() {
           playbackToken={firstCamera?.playbackToken}
         />
 
-        <AppCard title="摄像头注册">
+        <AppCard variant="expressive" title="摄像头注册">
           <Form form={cameraForm} layout="vertical" onFinish={(values) => void handleCreateCamera(values)} initialValues={{ farmId: farmId ?? undefined, streamProtocol: "RTSP" }}>
             <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
             <Form.Item label="大棚" name="greenhouseId" rules={[{ required: true }]}>
@@ -94,7 +94,7 @@ export default function VisionPage() {
       </div>
 
       <div className="space-y-4">
-        <AppCard title="创建视觉 AI 任务">
+        <AppCard variant="expressive" title="创建视觉 AI 任务">
           <Form form={taskForm} layout="vertical" onFinish={(values) => void handleCreateTask(values)} initialValues={{ farmId: farmId ?? undefined, providerType: "MOCK", objectKey: `vision/${Date.now()}.jpg` }}>
             <Form.Item name="farmId" hidden><InputNumber /></Form.Item>
             <Form.Item label="大棚" name="greenhouseId" rules={[{ required: true }]}>
@@ -112,7 +112,7 @@ export default function VisionPage() {
           </Form>
         </AppCard>
 
-        <AppCard title="摄像头与告警列表" className="min-h-0 overflow-hidden">
+        <AppCard variant="expressive" title="摄像头与告警列表" className="min-h-0 overflow-hidden">
           <Table
             rowKey="cameraId"
             dataSource={cameras}

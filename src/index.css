@@ -266,7 +266,8 @@ body {
   border-bottom-color: rgba(226, 232, 240, 0.72);
 }
 
-.community-page .community-surface {
+.community-page .community-surface,
+.expressive-page .community-surface {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 250, 246, 0.9)),
     rgba(255, 255, 255, 0.76);
@@ -276,18 +277,21 @@ body {
   backdrop-filter: blur(20px);
 }
 
-.community-page .community-highlight {
+.community-page .community-highlight,
+.expressive-page .community-highlight {
   background:
     radial-gradient(circle at top left, rgba(139, 201, 157, 0.16), transparent 30%),
     linear-gradient(180deg, rgba(251, 252, 248, 0.96), rgba(242, 248, 242, 0.92));
 }
 
-.community-page .community-editorial-panel {
+.community-page .community-editorial-panel,
+.expressive-page .community-editorial-panel {
   background:
     linear-gradient(180deg, rgba(247, 249, 245, 0.96), rgba(242, 247, 243, 0.88));
 }
 
-.community-page .community-hero {
+.community-page .community-hero,
+.expressive-page .community-hero {
   background:
     linear-gradient(180deg, rgba(245, 250, 244, 0.95), rgba(240, 247, 244, 0.9));
   box-shadow:
@@ -295,7 +299,8 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-.community-page .community-primary-btn.ant-btn {
+.community-page .community-primary-btn.ant-btn,
+.expressive-page .community-primary-btn.ant-btn {
   border-color: #6f9d76;
   background: linear-gradient(135deg, #7ba67f 0%, #6e9873 100%);
   color: #fff;
@@ -303,33 +308,41 @@ body {
 }
 
 .community-page .community-primary-btn.ant-btn:not(:disabled):hover,
-.community-page .community-primary-btn.ant-btn:not(:disabled):focus {
+.community-page .community-primary-btn.ant-btn:not(:disabled):focus,
+.expressive-page .community-primary-btn.ant-btn:not(:disabled):hover,
+.expressive-page .community-primary-btn.ant-btn:not(:disabled):focus {
   border-color: #7eaa84;
   background: linear-gradient(135deg, #88b28b 0%, #769f7c 100%);
   color: #fff;
 }
 
-.community-page .community-secondary-btn.ant-btn {
+.community-page .community-secondary-btn.ant-btn,
+.expressive-page .community-secondary-btn.ant-btn {
   border-color: rgba(111, 157, 118, 0.24);
   background: rgba(111, 157, 118, 0.1);
   color: #55785a;
 }
 
 .community-page .community-secondary-btn.ant-btn:not(:disabled):hover,
-.community-page .community-secondary-btn.ant-btn:not(:disabled):focus {
+.community-page .community-secondary-btn.ant-btn:not(:disabled):focus,
+.expressive-page .community-secondary-btn.ant-btn:not(:disabled):hover,
+.expressive-page .community-secondary-btn.ant-btn:not(:disabled):focus {
   border-color: rgba(111, 157, 118, 0.36);
   background: rgba(111, 157, 118, 0.16);
   color: #48664c;
 }
 
-.community-page .community-ghost-btn.ant-btn {
+.community-page .community-ghost-btn.ant-btn,
+.expressive-page .community-ghost-btn.ant-btn {
   border-color: rgba(111, 157, 118, 0.2);
   background: rgba(255, 255, 255, 0.78);
   color: #526f56;
 }
 
 .community-page .community-ghost-btn.ant-btn:not(:disabled):hover,
-.community-page .community-ghost-btn.ant-btn:not(:disabled):focus {
+.community-page .community-ghost-btn.ant-btn:not(:disabled):focus,
+.expressive-page .community-ghost-btn.ant-btn:not(:disabled):hover,
+.expressive-page .community-ghost-btn.ant-btn:not(:disabled):focus {
   border-color: rgba(111, 157, 118, 0.34);
   background: rgba(247, 250, 245, 0.96);
   color: #47614a;
@@ -340,7 +353,13 @@ body {
 .community-page .ant-input-number-outlined,
 .community-page .ant-select-outlined:not(.ant-select-customize-input) .ant-select-selector,
 .community-page .ant-input-affix-wrapper,
-.community-page .ant-input-textarea textarea {
+.community-page .ant-input-textarea textarea,
+.expressive-page .ant-input-number,
+.expressive-page .ant-input-outlined,
+.expressive-page .ant-input-number-outlined,
+.expressive-page .ant-select-outlined:not(.ant-select-customize-input) .ant-select-selector,
+.expressive-page .ant-input-affix-wrapper,
+.expressive-page .ant-input-textarea textarea {
   background: rgba(255, 255, 255, 0.92) !important;
   border-color: rgba(111, 157, 118, 0.18) !important;
   color: #1f2937 !important;
@@ -349,14 +368,21 @@ body {
 
 .community-page .ant-input-number-input,
 .community-page .ant-input,
-.community-page .ant-select-selection-item {
+.community-page .ant-select-selection-item,
+.expressive-page .ant-input-number-input,
+.expressive-page .ant-input,
+.expressive-page .ant-select-selection-item {
   color: #1f2937 !important;
 }
 
 .community-page .ant-input::placeholder,
 .community-page .ant-input-number-input::placeholder,
 .community-page .ant-select-selection-placeholder,
-.community-page .ant-input-textarea textarea::placeholder {
+.community-page .ant-input-textarea textarea::placeholder,
+.expressive-page .ant-input::placeholder,
+.expressive-page .ant-input-number-input::placeholder,
+.expressive-page .ant-select-selection-placeholder,
+.expressive-page .ant-input-textarea textarea::placeholder {
   color: rgba(71, 85, 105, 0.68) !important;
 }
 
@@ -371,24 +397,39 @@ body {
 .community-page .ant-input-number-outlined:focus-within,
 .community-page .ant-select-focused .ant-select-selector,
 .community-page .ant-input-affix-wrapper:focus-within,
-.community-page .ant-input-textarea textarea:focus {
+.community-page .ant-input-textarea textarea:focus,
+.expressive-page .ant-input-number:hover,
+.expressive-page .ant-input-outlined:hover,
+.expressive-page .ant-input-number-outlined:hover,
+.expressive-page .ant-select-outlined:not(.ant-select-customize-input):hover .ant-select-selector,
+.expressive-page .ant-input-affix-wrapper:hover,
+.expressive-page .ant-input-textarea textarea:hover,
+.expressive-page .ant-input-number:focus-within,
+.expressive-page .ant-input-outlined:focus,
+.expressive-page .ant-input-number-outlined:focus-within,
+.expressive-page .ant-select-focused .ant-select-selector,
+.expressive-page .ant-input-affix-wrapper:focus-within,
+.expressive-page .ant-input-textarea textarea:focus {
   border-color: rgba(111, 157, 118, 0.34) !important;
   box-shadow: 0 0 0 3px rgba(111, 157, 118, 0.12) !important;
 }
 
-.community-page .ant-tag {
+.community-page .ant-tag,
+.expressive-page .ant-tag {
   border-color: rgba(111, 157, 118, 0.16);
   background: rgba(248, 250, 247, 0.96);
   color: #516756;
 }
 
-.community-page .ant-tag.ant-tag-green {
+.community-page .ant-tag.ant-tag-green,
+.expressive-page .ant-tag.ant-tag-green {
   border-color: rgba(111, 157, 118, 0.2);
   background: rgba(226, 239, 228, 0.96);
   color: #4d6a52;
 }
 
-.dark .community-page .community-surface {
+.dark .community-page .community-surface,
+.dark .expressive-page .community-surface {
   background:
     linear-gradient(180deg, rgba(3, 9, 15, 0.9), rgba(6, 16, 24, 0.82)),
     rgba(2, 6, 23, 0.74);
@@ -397,24 +438,28 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-.dark .community-page .community-highlight {
+.dark .community-page .community-highlight,
+.dark .expressive-page .community-highlight {
   background:
     radial-gradient(circle at top left, rgba(18, 183, 106, 0.12), transparent 28%),
     linear-gradient(180deg, rgba(6, 17, 14, 0.96), rgba(8, 22, 19, 0.84));
 }
 
-.dark .community-page .community-editorial-panel {
+.dark .community-page .community-editorial-panel,
+.dark .expressive-page .community-editorial-panel {
   background:
     linear-gradient(180deg, rgba(6, 15, 14, 0.95), rgba(7, 18, 20, 0.86));
 }
 
-.dark .community-page .community-secondary-btn.ant-btn {
+.dark .community-page .community-secondary-btn.ant-btn,
+.dark .expressive-page .community-secondary-btn.ant-btn {
   border-color: rgba(18, 183, 106, 0.18);
   background: rgba(18, 183, 106, 0.12);
   color: #86efac;
 }
 
-.dark .community-page .ant-tag {
+.dark .community-page .ant-tag,
+.dark .expressive-page .ant-tag {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(255, 255, 255, 0.05);
   color: #e2e8f0;
