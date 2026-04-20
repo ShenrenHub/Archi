@@ -1,0 +1,150 @@
+.layer {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  overflow: clip;
+}
+
+.actor {
+  pointer-events: auto;
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 60px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  min-width: 108px;
+  max-width: min(220px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  border: 3px solid var(--mascot-border);
+  border-radius: 16px;
+  background: var(--mascot-bubble);
+  padding: 8px 10px;
+  color: var(--mascot-text);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: left;
+  box-shadow: 0 10px 0 var(--mascot-shadow);
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%) rotate(45deg);
+  border-right: 3px solid var(--mascot-border);
+  border-bottom: 3px solid var(--mascot-border);
+  background: var(--mascot-tail);
+}
+
+.spriteWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 12px 18px rgba(42, 66, 29, 0.24));
+  transform-origin: center bottom;
+}
+
+.idle {
+  animation: idleFloat 2.7s ease-in-out infinite;
+}
+
+.walk {
+  animation: walkBob 0.52s ease-in-out infinite;
+}
+
+.jump {
+  animation: hop 0.58s cubic-bezier(0.2, 0.9, 0.18, 1) 1;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.shadow {
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 38px;
+  height: 10px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(33, 52, 20, 0.16);
+  filter: blur(1px);
+}
+
+.light {
+  --mascot-border: #27411b;
+  --mascot-bubble: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(244, 251, 241, 0.98));
+  --mascot-tail: rgba(244, 251, 241, 0.98);
+  --mascot-text: #203018;
+  --mascot-shadow: rgba(39, 65, 27, 0.18);
+}
+
+.dark {
+  --mascot-border: #98dba8;
+  --mascot-bubble: linear-gradient(180deg, rgba(7, 17, 21, 0.96), rgba(13, 30, 21, 0.96));
+  --mascot-tail: rgba(13, 30, 21, 0.96);
+  --mascot-text: rgba(234, 255, 237, 0.96);
+  --mascot-shadow: rgba(2, 12, 8, 0.34);
+}
+
+@keyframes idleFloat {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.01);
+  }
+}
+
+@keyframes walkBob {
+  0%,
+  100% {
+    transform: translateY(0) scaleX(1);
+  }
+  50% {
+    transform: translateY(-2px) scaleX(0.98);
+  }
+}
+
+@keyframes hop {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  18% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  48% {
+    transform: translateY(-16px) scale(0.96, 1.07);
+  }
+  82% {
+    transform: translateY(0) scale(1.04, 0.94);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}

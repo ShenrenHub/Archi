@@ -1,86 +1,121 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { message } from "antd";
+import type { Layout } from "react-grid-layout";
 import { SmartDataCenterCanvasPanel } from "./SmartDataCenterCanvasPanel";
-import { SmartDataCenterChatPanel } from "./SmartDataCenterChatPanel";
 import { SmartDataCenterConsole } from "./SmartDataCenterConsole";
-import { useSmartDataCenterChat } from "./useSmartDataCenterChat";
 import { useSmartDataCenterRuntime } from "./useSmartDataCenterRuntime";
 import {
-  DEFAULT_CUSTOM_BLOCKS,
-  buildCard,
   buildInitialCards,
-  sortBlockTypes,
-  type SmartDataBlockType,
-  type SmartDataCardItem
+  createSmartDataCard,
+  fitCardsToViewport,
+  getNextCardY,
+  hasCardLayoutChanged,
+  resolveSmartDataMaxRows,
+  syncCardsWithLayout,
+  type SmartDataCardItem,
+  type SmartDataCardType
 } from "./model";
 
 export default function SmartDataCenterPage() {
   const [cards, setCards] = useState<SmartDataCardItem[]>(() => buildInitialCards());
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const [selectedBlocks, setSelectedBlocks] =
-    useState<SmartDataBlockType[]>(DEFAULT_CUSTOM_BLOCKS);
+  const [consoleOpen, setConsoleOpen] = useState(true);
+  const [maxRows, setMaxRows] = useState(() => resolveSmartDataMaxRows(360));
+  const handleRuntimeLoadFailed = useCallback(() => {
+    message.error("智慧数据中心实时数据装载失败");
+  }, []);
+  const { runtime, refreshRuntime, toggleBoardLight } = useSmartDataCenterRuntime(
+    handleRuntimeLoadFailed
+  );
 
-  const { farmId, farmName, runtime, refreshRuntime } = useSmartDataCenterRuntime(() => {
-    message.error("智慧数据中心实体装载失败");
-  });
-  const { messages, question, sending, setQuestion, sendQuestion } = useSmartDataCenterChat();
+  const handleAddCard = (type: SmartDataCardType) => {
+    const { cards: nextCards, removedCards } = fitCardsToViewport(
+      [...cards, createSmartDataCard(type, getNextCardY(cards))],
+      maxRows
+    );
 
-  const handleAddTemplateCard = (blockTypes: SmartDataBlockType[]) => {
-    setCards((current) => [buildCard(blockTypes), ...current]);
-  };
+    setCards(nextCards);
 
-  const handleToggleBlock = (type: SmartDataBlockType) => {
-    setSelectedBlocks((current) => {
-      const next = current.includes(type)
-        ? current.filter((item) => item !== type)
-        : [...current, type];
-
-      return sortBlockTypes(next);
-    });
-  };
-
-  const handleBuildCustomCard = () => {
-    if (!selectedBlocks.length) {
-      message.warning("至少选择一个积木");
-      return;
+    if (removedCards.length > 0) {
+      const removedCount = removedCards.length;
+      const oldestRemoved = removedCards[0];
+      message.warning(
+        removedCount === 1
+          ? `空间不足，已移除最早的${oldestRemoved.type === "temperature" ? "实时温度" : "实时湿度"}卡片`
+          : `空间不足，已移除最早的 ${removedCount} 张卡片`
+      );
     }
-
-    setCards((current) => [buildCard(selectedBlocks), ...current]);
-    setSelectedBlocks(DEFAULT_CUSTOM_BLOCKS);
   };
 
   const handleRemoveCard = (cardId: string) => {
-    setCards((current) => current.filter((item) => item.id !== cardId));
+    setCards((current) =>
+      fitCardsToViewport(
+        current.filter((item) => item.id !== cardId),
+        maxRows,
+        { preferPresetLayout: true }
+      ).cards
+    );
   };
 
+  const handleLayoutChange = (layout: Layout) => {
+    setCards((current) => {
+      if (!hasCardLayoutChanged(current, layout)) {
+        return current;
+      }
+
+      return syncCardsWithLayout(current, layout);
+    });
+  };
+
+  const handleMaxRowsChange = useCallback(
+    (nextMaxRows: number) => {
+      if (maxRows === nextMaxRows) {
+        return;
+      }
+
+      setMaxRows(nextMaxRows);
+      setCards((current) => {
+        const { cards: fittedCards } = fitCardsToViewport(current, nextMaxRows, {
+          preferPresetLayout: true
+        });
+        return fittedCards;
+      });
+    },
+    [maxRows]
+  );
+
+  const handleToggleBoardLight = useCallback(
+    async (targetState: "ON" | "OFF") => {
+      const result = await toggleBoardLight(targetState);
+
+      if (result.ok) {
+        message.success(result.message);
+      } else {
+        message.error(result.message);
+      }
+    },
+    [toggleBoardLight]
+  );
+
   return (
-    <div className="grid h-full min-h-0 grid-rows-[minmax(0,1fr)_auto] gap-4">
-      <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="relative h-full min-h-0">
+      <div className="h-full min-h-0">
         <SmartDataCenterCanvasPanel
           cards={cards}
-          farmId={farmId}
-          farmName={farmName}
+          maxRows={maxRows}
           runtime={runtime}
           onRefresh={() => refreshRuntime().then(() => undefined)}
           onRemoveCard={handleRemoveCard}
-        />
-
-        <SmartDataCenterChatPanel
-          messages={messages}
-          question={question}
-          sending={sending}
-          onQuestionChange={setQuestion}
-          onSend={sendQuestion}
+          onLayoutChange={handleLayoutChange}
+          onMaxRowsChange={handleMaxRowsChange}
+          onToggleBoardLight={handleToggleBoardLight}
         />
       </div>
 
       <SmartDataCenterConsole
         open={consoleOpen}
-        selectedBlocks={selectedBlocks}
+        cards={cards}
         onToggleOpen={() => setConsoleOpen((current) => !current)}
-        onAddTemplateCard={handleAddTemplateCard}
-        onToggleBlock={handleToggleBlock}
-        onBuildCustomCard={handleBuildCustomCard}
+        onAddCard={handleAddCard}
       />
     </div>
   );

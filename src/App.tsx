@@ -1,6 +1,7 @@
 import { App as AntApp, ConfigProvider, theme } from "antd";
 import { BrowserRouter } from "react-router-dom";
 import { AppRouter } from "@/router";
+import { MascotLayer } from "@/features/mascot";
 import { useThemeStore } from "@/store/theme";
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
       <AntApp>
         <BrowserRouter>
           <AppRouter />
+          <MascotLayer dark={mode === "dark"} />
         </BrowserRouter>
       </AntApp>
     </ConfigProvider>

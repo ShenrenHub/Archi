@@ -1,37 +1,69 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createCommand, fetchCommands, type CommandItem } from "@/api/control";
+import { fetchDevices, type DeviceItem } from "@/api/device";
 import {
+  fetchDeviceSnapshots,
   fetchLatestTelemetry,
-  fetchTelemetryOverview,
-  type LatestTelemetryItem,
-  type TelemetryOverviewItem
+  type DeviceSnapshotItem,
+  type LatestTelemetryItem
 } from "@/api/telemetry";
-import { fetchCameras, type CameraItem } from "@/api/vision";
 import { useMqttBridge } from "@/hooks/useMqttBridge";
 import { useUserStore } from "@/store/user";
 import {
+  CONTROL_DEVICE_CATALOG,
+  findDeviceAction,
+  type DeviceActionState
+} from "@/views/device-control/device-catalog";
+import {
+  LIGHT_METRIC_CODES,
+  mergeTelemetryHistory,
   normalizeMetricCode,
-  patchOverviewWithTelemetry,
+  pickLatestMetric,
   type SmartDataRuntime
 } from "./model";
 
 const SMART_DATA_POLL_INTERVAL_MS = 8000;
+const BOARD_LIGHT_DEVICE = CONTROL_DEVICE_CATALOG[0];
+
+const readLightState = (snapshot: Record<string, unknown> | undefined): DeviceActionState | null => {
+  const rawValue = snapshot?.lightStatus ?? snapshot?.LightStatus;
+  if (typeof rawValue !== "string") {
+    return null;
+  }
+
+  if (rawValue.toUpperCase() === "ON") {
+    return "ON";
+  }
+
+  if (rawValue.toUpperCase() === "OFF") {
+    return "OFF";
+  }
+
+  return null;
+};
 
 interface SmartDataCenterRuntimeResult {
-  farmId: number | null;
-  farmName: string;
   runtime: SmartDataRuntime;
   refreshRuntime: (options?: { silent?: boolean }) => Promise<boolean>;
+  toggleBoardLight: (targetState: DeviceActionState) => Promise<{
+    ok: boolean;
+    message: string;
+  }>;
 }
 
 export const useSmartDataCenterRuntime = (
-  onLoadFailed: () => void
+  onLoadFailed?: () => void
 ): SmartDataCenterRuntimeResult => {
   const farmId = useUserStore((state) => state.farmId);
   const farms = useUserStore((state) => state.farms);
-  const [telemetryOverview, setTelemetryOverview] = useState<TelemetryOverviewItem[]>([]);
   const [latestTelemetry, setLatestTelemetry] = useState<LatestTelemetryItem[]>([]);
-  const [cameras, setCameras] = useState<CameraItem[]>([]);
+  const [telemetryHistory, setTelemetryHistory] = useState<LatestTelemetryItem[]>([]);
+  const [devices, setDevices] = useState<DeviceItem[]>([]);
+  const [snapshots, setSnapshots] = useState<DeviceSnapshotItem[]>([]);
+  const [commands, setCommands] = useState<CommandItem[]>([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [pendingLightState, setPendingLightState] = useState<DeviceActionState | null>(null);
+  const [submittingLightCommand, setSubmittingLightCommand] = useState(false);
   const { state: socketState, latency: socketLatency, lastMessage } = useMqttBridge(farmId);
 
   const farmName = useMemo(
@@ -42,9 +74,11 @@ export const useSmartDataCenterRuntime = (
   const refreshRuntime = useCallback(
     async ({ silent = false }: { silent?: boolean } = {}) => {
       if (!farmId) {
-        setTelemetryOverview([]);
         setLatestTelemetry([]);
-        setCameras([]);
+        setTelemetryHistory([]);
+        setDevices([]);
+        setSnapshots([]);
+        setCommands([]);
         setLoadingData(false);
         return false;
       }
@@ -52,19 +86,21 @@ export const useSmartDataCenterRuntime = (
       setLoadingData(true);
 
       try {
-        const [overviewResponse, latestResponse, cameraResponse] = await Promise.all([
-          fetchTelemetryOverview(farmId),
+        const [nextTelemetry, nextDevices, nextSnapshots, nextCommands] = await Promise.all([
           fetchLatestTelemetry(farmId),
-          fetchCameras(farmId)
+          fetchDevices(farmId),
+          fetchDeviceSnapshots(farmId),
+          fetchCommands(farmId)
         ]);
-
-        setTelemetryOverview(overviewResponse);
-        setLatestTelemetry(latestResponse);
-        setCameras(cameraResponse);
+        setLatestTelemetry(nextTelemetry);
+        setTelemetryHistory((current) => mergeTelemetryHistory(current, nextTelemetry));
+        setDevices(nextDevices);
+        setSnapshots(nextSnapshots);
+        setCommands(nextCommands);
         return true;
       } catch {
         if (!silent) {
-          onLoadFailed();
+          onLoadFailed?.();
         }
         return false;
       } finally {
@@ -73,6 +109,12 @@ export const useSmartDataCenterRuntime = (
     },
     [farmId, onLoadFailed]
   );
+
+  useEffect(() => {
+    setTelemetryHistory([]);
+    setPendingLightState(null);
+    setSubmittingLightCommand(false);
+  }, [farmId]);
 
   useEffect(() => {
     void refreshRuntime();
@@ -108,41 +150,138 @@ export const useSmartDataCenterRuntime = (
         )
       ];
 
-      return next.slice(0, 12);
+      return next.slice(0, 24);
     });
-
-    setTelemetryOverview((current) =>
-      current.map((item) => patchOverviewWithTelemetry(item, lastMessage))
-    );
+    setTelemetryHistory((current) => mergeTelemetryHistory(current, [lastMessage]));
   }, [lastMessage]);
+
+  const boardLightRuntime = useMemo(() => {
+    const boardDevice = devices.find((item) => item.deviceCode === BOARD_LIGHT_DEVICE.deviceCode);
+    const boardSnapshot = boardDevice
+      ? snapshots.find((item) => item.deviceId === boardDevice.id)
+      : undefined;
+    const lastCommand = boardDevice
+      ? commands.find((item) => item.deviceId === boardDevice.id)
+      : undefined;
+    const actualLightState = readLightState(boardSnapshot?.snapshot);
+    const state = pendingLightState ?? actualLightState ?? null;
+
+    return {
+      available: Boolean(boardDevice),
+      pending: submittingLightCommand,
+      online: boardDevice?.onlineStatus === "ONLINE",
+      state,
+      deviceId: boardDevice?.id ?? null,
+      deviceName: boardDevice?.deviceName ?? BOARD_LIGHT_DEVICE.name,
+      greenhouseId: boardDevice?.greenhouseId ?? null,
+      greenhouseName: null,
+      lastCommandStatus: lastCommand?.commandStatus ?? null
+    };
+  }, [commands, devices, pendingLightState, snapshots, submittingLightCommand]);
+
+  useEffect(() => {
+    if (!pendingLightState) {
+      return;
+    }
+
+    if (
+      boardLightRuntime.state === pendingLightState ||
+      boardLightRuntime.lastCommandStatus === "FAILED"
+    ) {
+      setPendingLightState(null);
+      setSubmittingLightCommand(false);
+    }
+  }, [boardLightRuntime.lastCommandStatus, boardLightRuntime.state, pendingLightState]);
+
+  const toggleBoardLight = useCallback(
+    async (targetState: DeviceActionState) => {
+      if (!farmId) {
+        return {
+          ok: false,
+          message: "请先选择农场。"
+        };
+      }
+
+      const boardDevice = devices.find((item) => item.deviceCode === BOARD_LIGHT_DEVICE.deviceCode);
+
+      if (!boardDevice || !boardDevice.greenhouseId) {
+        return {
+          ok: false,
+          message: "开发板尚未接入或未绑定大棚。"
+        };
+      }
+
+      const action = findDeviceAction(BOARD_LIGHT_DEVICE, targetState);
+
+      if (!action) {
+        return {
+          ok: false,
+          message: "当前开发板未配置该灯控动作。"
+        };
+      }
+
+      setPendingLightState(targetState);
+      setSubmittingLightCommand(true);
+
+      try {
+        await createCommand({
+          farmId,
+          greenhouseId: boardDevice.greenhouseId,
+          deviceId: boardDevice.id,
+          idempotencyKey: `smart-data-${boardDevice.id}-${Date.now()}`,
+          commandCode: action.commandCode,
+          commandPayload: action.buildPayload()
+        });
+        void refreshRuntime({ silent: true });
+
+        return {
+          ok: true,
+          message: targetState === "ON" ? "开灯命令已下发。" : "关灯命令已下发。"
+        };
+      } catch {
+        setPendingLightState(null);
+        setSubmittingLightCommand(false);
+
+        return {
+          ok: false,
+          message: "灯控命令下发失败，请稍后重试。"
+        };
+      }
+    },
+    [devices, farmId, refreshRuntime]
+  );
 
   const runtime = useMemo<SmartDataRuntime>(
     () => ({
       farmId,
       farmName,
       loading: loadingData,
-      telemetryOverview,
       latestTelemetry,
-      cameras,
+      telemetryHistory,
+      metrics: {
+        temperature: pickLatestMetric(latestTelemetry, ["temperature"]),
+        humidity: pickLatestMetric(latestTelemetry, ["humidity"]),
+        light: pickLatestMetric(latestTelemetry, LIGHT_METRIC_CODES)
+      },
+      boardLight: boardLightRuntime,
       socketState,
       socketLatency
     }),
     [
-      cameras,
+      boardLightRuntime,
       farmId,
       farmName,
       latestTelemetry,
       loadingData,
       socketLatency,
       socketState,
-      telemetryOverview
+      telemetryHistory
     ]
   );
 
   return {
-    farmId,
-    farmName,
     runtime,
-    refreshRuntime
+    refreshRuntime,
+    toggleBoardLight
   };
 };

@@ -1,411 +1,861 @@
-import type { ReactNode } from "react";
-import { Button } from "antd";
+import { useMemo, type ReactNode } from "react";
+import { Button, Switch, Tag } from "antd";
 import {
   BulbOutlined,
-  CameraOutlined,
+  CloudOutlined,
   DeleteOutlined,
-  ExperimentOutlined
+  ExportOutlined,
+  FireOutlined,
+  LineChartOutlined,
+  MedicineBoxOutlined,
+  ThunderboltOutlined
 } from "@ant-design/icons";
+import type { EChartsOption } from "echarts";
+import ReactECharts from "echarts-for-react";
+import dayjs from "dayjs";
 import clsx from "clsx";
-import type { LatestTelemetryItem, TelemetryOverviewItem } from "@/api/telemetry";
-import type {
-  SmartDataBlockType,
-  SmartDataCardItem,
-  SmartDataRuntime,
-  SmartDataBrickDefinition
+import { useNavigate } from "react-router-dom";
+import { useThemeStore } from "@/store/theme";
+import { formatDateTime } from "@/utils/time";
+import {
+  formatMetricCodeLabel,
+  getCardDefinition,
+  normalizeMetricCode,
+  resolveBoardLightStateLabel,
+  SMART_DATA_CARD_MIN_HEIGHT,
+  SMART_DATA_CARD_MIN_WIDTH,
+  type SmartDataCardItem,
+  type SmartDataCardType,
+  type SmartDataRuntime
 } from "./model";
-import { normalizeMetricCode } from "./model";
 
-interface SmartDataCardBoardProps {
-  cards: SmartDataCardItem[];
+const GENGZHI_FORUM_URL =
+  import.meta.env.VITE_GENGZHI_URL || "http://175.178.11.192:6001/community";
+const TELEMETRY_CHART_COLORS = ["#15803D", "#22C55E", "#0284C7", "#CA8A04", "#DC2626", "#0F766E"];
+
+interface SmartDataCardProps {
+  card: SmartDataCardItem;
   runtime: SmartDataRuntime;
-  onRemoveCard: (cardId: string) => void;
+  onRemove: () => void;
+  onToggleBoardLight: (targetState: "ON" | "OFF") => Promise<void>;
 }
 
-const LIGHT_METRIC_CODES = ["light", "light_lux", "brightness"];
+type SmartDataCardOfType<T extends SmartDataCardType> = SmartDataCardItem & {
+  type: T;
+};
 
-const DataLoadingState = () => (
-  <div className="space-y-3">
-    <div className="h-16 animate-pulse rounded-[18px] bg-white/75 dark:bg-white/10" />
-    <div className="h-20 animate-pulse rounded-[18px] bg-white/75 dark:bg-white/10" />
-  </div>
-);
+interface CardDensity {
+  compact: boolean;
+  ultraCompact: boolean;
+}
 
-const DataEmptyState = ({ message }: { message: string }) => (
-  <div className="flex min-h-[188px] items-center rounded-[18px] border border-dashed border-slate-300/80 bg-white/68 px-4 py-5 text-sm leading-6 text-slate-500 dark:border-white/12 dark:bg-slate-950/35 dark:text-slate-300">
+interface SmartDataCardFrameProps {
+  card: SmartDataCardItem;
+  title: string;
+  description: string;
+  icon: ReactNode;
+  shellClassName: string;
+  iconClassName: string;
+  onRemove: () => void;
+  headerExtra?: ReactNode;
+  children: (density: CardDensity) => ReactNode;
+}
+
+const CARD_THEME: Record<
+  SmartDataCardType,
+  {
+    icon: ReactNode;
+    shellClassName: string;
+    iconClassName: string;
+    valueClassName?: string;
+  }
+> = {
+  temperature: {
+    icon: <FireOutlined />,
+    shellClassName:
+      "border-amber-200/80 bg-[linear-gradient(180deg,rgba(255,247,237,0.96),rgba(255,251,235,0.88))] dark:border-amber-400/18 dark:bg-[linear-gradient(180deg,rgba(69,26,3,0.62),rgba(30,41,59,0.92))]",
+    iconClassName:
+      "bg-amber-500/14 text-amber-600 dark:bg-amber-400/16 dark:text-amber-100",
+    valueClassName: "text-amber-600 dark:text-amber-100"
+  },
+  humidity: {
+    icon: <CloudOutlined />,
+    shellClassName:
+      "border-sky-200/80 bg-[linear-gradient(180deg,rgba(239,246,255,0.96),rgba(236,254,255,0.86))] dark:border-sky-400/18 dark:bg-[linear-gradient(180deg,rgba(8,47,73,0.54),rgba(15,23,42,0.92))]",
+    iconClassName:
+      "bg-sky-500/14 text-sky-600 dark:bg-sky-400/16 dark:text-sky-100",
+    valueClassName: "text-sky-600 dark:text-sky-100"
+  },
+  light: {
+    icon: <BulbOutlined />,
+    shellClassName:
+      "border-yellow-200/80 bg-[linear-gradient(180deg,rgba(254,252,232,0.96),rgba(255,251,235,0.88))] dark:border-yellow-400/18 dark:bg-[linear-gradient(180deg,rgba(113,63,18,0.52),rgba(30,41,59,0.92))]",
+    iconClassName:
+      "bg-yellow-500/14 text-yellow-600 dark:bg-yellow-400/16 dark:text-yellow-100",
+    valueClassName: "text-yellow-600 dark:text-yellow-100"
+  },
+  telemetryChart: {
+    icon: <LineChartOutlined />,
+    shellClassName:
+      "border-emerald-200/80 bg-[linear-gradient(180deg,rgba(236,253,245,0.96),rgba(240,253,250,0.88))] dark:border-emerald-400/18 dark:bg-[linear-gradient(180deg,rgba(6,78,59,0.56),rgba(15,23,42,0.92))]",
+    iconClassName:
+      "bg-emerald-500/14 text-emerald-600 dark:bg-emerald-400/16 dark:text-emerald-100"
+  },
+  boardLightControl: {
+    icon: <ThunderboltOutlined />,
+    shellClassName:
+      "border-fuchsia-200/80 bg-[linear-gradient(180deg,rgba(250,245,255,0.96),rgba(253,244,255,0.88))] dark:border-fuchsia-400/18 dark:bg-[linear-gradient(180deg,rgba(88,28,135,0.42),rgba(15,23,42,0.92))]",
+    iconClassName:
+      "bg-fuchsia-500/14 text-fuchsia-600 dark:bg-fuchsia-400/16 dark:text-fuchsia-100"
+  },
+  startDiagnosis: {
+    icon: <MedicineBoxOutlined />,
+    shellClassName:
+      "border-rose-200/80 bg-[linear-gradient(180deg,rgba(255,241,242,0.96),rgba(255,245,245,0.88))] dark:border-rose-400/18 dark:bg-[linear-gradient(180deg,rgba(127,29,29,0.4),rgba(15,23,42,0.92))]",
+    iconClassName:
+      "bg-rose-500/14 text-rose-600 dark:bg-rose-400/16 dark:text-rose-100"
+  },
+  openCommunity: {
+    icon: <ExportOutlined />,
+    shellClassName:
+      "border-blue-200/80 bg-[linear-gradient(180deg,rgba(239,246,255,0.96),rgba(244,249,255,0.88))] dark:border-blue-400/18 dark:bg-[linear-gradient(180deg,rgba(30,64,175,0.34),rgba(15,23,42,0.92))]",
+    iconClassName:
+      "bg-blue-500/14 text-blue-600 dark:bg-blue-400/16 dark:text-blue-100"
+  }
+};
+
+const resolveCardDensity = (card: SmartDataCardItem): CardDensity => {
+  const ultraCompact =
+    card.layout.h <= SMART_DATA_CARD_MIN_HEIGHT || card.layout.w <= SMART_DATA_CARD_MIN_WIDTH;
+  const compact =
+    ultraCompact ||
+    card.layout.h <= SMART_DATA_CARD_MIN_HEIGHT + 1 ||
+    card.layout.w <= SMART_DATA_CARD_MIN_WIDTH + 2;
+
+  return {
+    compact,
+    ultraCompact
+  };
+};
+
+const formatMetricValue = (value: number) => {
+  if (Math.abs(value) >= 100) {
+    return value.toFixed(0);
+  }
+
+  if (Math.abs(value) >= 10) {
+    return value.toFixed(1);
+  }
+
+  return value.toFixed(2).replace(/\.?0+$/, "");
+};
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const normalized = hex.replace("#", "");
+  const expanded = normalized.length === 3
+    ? normalized
+        .split("")
+        .map((char) => `${char}${char}`)
+        .join("")
+    : normalized;
+
+  const red = Number.parseInt(expanded.slice(0, 2), 16);
+  const green = Number.parseInt(expanded.slice(2, 4), 16);
+  const blue = Number.parseInt(expanded.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
+
+const formatTelemetryValue = (value: unknown) => {
+  const numeric = Number(value);
+
+  if (Number.isFinite(numeric)) {
+    return formatMetricValue(numeric);
+  }
+
+  return String(value ?? "-");
+};
+
+const DataMessage = ({ message }: { message: string }) => (
+  <div className="flex h-full items-center rounded-[24px] border border-dashed border-slate-300/80 bg-white/68 px-4 py-5 text-sm leading-7 text-slate-500 dark:border-white/12 dark:bg-slate-950/35 dark:text-slate-300">
     {message}
   </div>
 );
 
-const MetricPlate = ({
-  eyebrow,
-  value,
-  caption,
-  className,
-  reverse = false
-}: {
-  eyebrow: string;
-  value: string;
-  caption?: string;
-  className?: string;
-  reverse?: boolean;
-}) => (
-  <div
-    className={clsx(
-      "flex h-full min-h-[156px] flex-col justify-between rounded-[20px] border px-4 py-4",
-      reverse
-        ? "border-white/10 bg-slate-950 text-white"
-        : "border-white/60 bg-white/82 text-slate-950 dark:border-white/8 dark:bg-slate-950/45 dark:text-white",
-      className
-    )}
-  >
-    <div>
-      <p
-        className={clsx(
-          "text-[11px] uppercase tracking-[0.24em]",
-          reverse ? "text-slate-400" : "text-slate-500 dark:text-slate-300"
-        )}
-      >
-        {eyebrow}
-      </p>
-      <p className="mt-3 text-3xl font-semibold tracking-[-0.02em]">{value}</p>
+const DataLoadingState = ({ compact = false }: { compact?: boolean }) => (
+  <div className={clsx("space-y-4", compact ? "pt-2" : "")}>
+    <div className="h-7 w-24 animate-pulse rounded-full bg-white/80 dark:bg-white/10" />
+    <div className="h-16 animate-pulse rounded-[20px] bg-white/80 dark:bg-white/10" />
+    <div className={clsx("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
+      <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
+      <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" />
+      {!compact ? <div className="h-20 animate-pulse rounded-[18px] bg-white/80 dark:bg-white/10" /> : null}
     </div>
-    {caption ? (
-      <p
-        className={clsx(
-          "text-xs leading-5",
-          reverse ? "text-slate-300" : "text-slate-500 dark:text-slate-300"
-        )}
-      >
-        {caption}
-      </p>
-    ) : null}
   </div>
 );
 
-const MetaRow = ({
+const MetaPlate = ({
   label,
   value
 }: {
   label: string;
   value: string;
 }) => (
-  <div className="flex items-center justify-between gap-3 rounded-[16px] bg-white/78 px-4 py-3 text-sm dark:bg-slate-950/42">
-    <span className="text-slate-500 dark:text-slate-300">{label}</span>
-    <span className="truncate text-right font-medium text-slate-900 dark:text-white">
-      {value}
-    </span>
+  <div className="rounded-[18px] border border-white/60 bg-white/72 px-4 py-3 shadow-sm dark:border-white/8 dark:bg-slate-950/42 dark:shadow-none">
+    <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">{label}</p>
+    <p className="mt-2 truncate text-sm font-semibold text-slate-900 dark:text-white">{value}</p>
   </div>
 );
 
-const SmartDataBlockShell = ({
-  definition,
+const SmartDataCardFrame = ({
+  card,
+  title,
+  description,
+  icon,
+  shellClassName,
+  iconClassName,
+  onRemove,
+  headerExtra,
   children
-}: {
-  definition: SmartDataBrickDefinition;
-  children: ReactNode;
-}) => (
-  <section
-    className={clsx(
-      "flex h-full min-h-[180px] flex-col overflow-hidden rounded-[24px] border p-4 shadow-sm transition dark:shadow-none",
-      definition.shellClassName
-    )}
-  >
-    <div className="mb-4 flex items-center gap-3">
-      <div
-        className={clsx(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] text-lg",
-          definition.iconClassName
-        )}
-      >
-        {definition.icon}
-      </div>
-      <p className="text-sm font-semibold tracking-[0.01em] text-slate-900 dark:text-white">
-        {definition.label}
-      </p>
-    </div>
-    <div className="flex-1">{children}</div>
-  </section>
-);
-
-const averageNumbers = (values: Array<number | null | undefined>) => {
-  const validValues = values.filter(
-    (value): value is number => typeof value === "number" && Number.isFinite(value)
-  );
-
-  if (!validValues.length) {
-    return null;
-  }
-
-  return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
-};
-
-const formatMetric = (value: number | null | undefined, digits = 0, suffix = "") => {
-  if (typeof value !== "number" || Number.isNaN(value)) {
-    return "--";
-  }
-
-  return `${value.toFixed(digits)}${suffix}`;
-};
-
-const pickLatestMetric = (latestTelemetry: LatestTelemetryItem[], metricCodes: string[]) => {
-  const aliases = metricCodes.map(normalizeMetricCode);
-  return latestTelemetry.find((item) => aliases.includes(normalizeMetricCode(item.metricCode)));
-};
-
-const renderLightBrick = (runtime: SmartDataRuntime) => {
-  if (!runtime.farmId) {
-    return <DataEmptyState message="当前未绑定农场，无法装载光照数据。" />;
-  }
-
-  const lightRows = runtime.telemetryOverview.filter(
-    (item): item is TelemetryOverviewItem & { lightLux: number } => item.lightLux !== null
-  );
-  const latestLight = pickLatestMetric(runtime.latestTelemetry, LIGHT_METRIC_CODES);
-
-  if (runtime.loading && lightRows.length === 0) {
-    return <DataLoadingState />;
-  }
-
-  if (!lightRows.length) {
-    return <DataEmptyState message="当前农场暂无光照数据。" />;
-  }
-
-  const averageLight = averageNumbers(lightRows.map((item) => item.lightLux));
-  const brightestGreenhouse = [...lightRows].sort((left, right) => right.lightLux - left.lightLux)[0];
+}: SmartDataCardFrameProps) => {
+  const { compact, ultraCompact } = resolveCardDensity(card);
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <MetricPlate
-        eyebrow="平均光照"
-        value={formatMetric(averageLight, 0, " Lux")}
-        caption={`${lightRows.length} 个实体参与聚合`}
-      />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MetaRow
-          label="峰值"
-          value={
-            brightestGreenhouse
-              ? `${brightestGreenhouse.greenhouseName} · ${formatMetric(brightestGreenhouse.lightLux, 0, " Lux")}`
-              : "--"
-          }
-        />
-        <MetaRow
-          label="最新"
-          value={
-            latestLight
-              ? formatMetric(latestLight.metricValue, 0, ` ${latestLight.unit}`)
-              : "等待推送"
-          }
-        />
-      </div>
-    </div>
-  );
-};
-
-const renderClimateBrick = (runtime: SmartDataRuntime) => {
-  if (!runtime.farmId) {
-    return <DataEmptyState message="当前未绑定农场，无法装载温湿度数据。" />;
-  }
-
-  const climateRows = runtime.telemetryOverview.filter(
-    (item) => item.temperature !== null || item.humidity !== null
-  );
-
-  if (runtime.loading && climateRows.length === 0) {
-    return <DataLoadingState />;
-  }
-
-  if (!climateRows.length) {
-    return <DataEmptyState message="当前农场暂无温湿度数据。" />;
-  }
-
-  const averageTemperature = averageNumbers(climateRows.map((item) => item.temperature));
-  const averageHumidity = averageNumbers(climateRows.map((item) => item.humidity));
-
-  return (
-    <div className="grid h-full gap-3 sm:grid-cols-2">
-      <MetricPlate
-        eyebrow="温度"
-        value={formatMetric(averageTemperature, 1, "°C")}
-        caption={runtime.farmName}
-      />
-      <MetricPlate
-        eyebrow="湿度"
-        value={formatMetric(averageHumidity, 1, "%")}
-        caption={`${climateRows.length} 个实体`}
-      />
-    </div>
-  );
-};
-
-const renderCameraBrick = (runtime: SmartDataRuntime) => {
-  if (!runtime.farmId) {
-    return <DataEmptyState message="当前未绑定农场，无法装载摄像头数据。" />;
-  }
-
-  if (runtime.loading && runtime.cameras.length === 0) {
-    return <DataLoadingState />;
-  }
-
-  if (!runtime.cameras.length) {
-    return <DataEmptyState message="当前农场暂无摄像头实体。" />;
-  }
-
-  const primaryCamera = runtime.cameras[0];
-  const playableCount = runtime.cameras.filter((item) => item.playbackToken).length;
-
-  return (
-    <div className="flex h-full flex-col gap-3">
-      <MetricPlate
-        eyebrow="摄像头"
-        value={`${runtime.cameras.length} 路`}
-        caption={primaryCamera.cameraName}
-        reverse
-      />
-      <div className="grid gap-3 sm:grid-cols-2">
-        <MetaRow label="可播放" value={`${playableCount} 路`} />
-        <MetaRow label="协议" value={primaryCamera.streamProtocol || "未配置"} />
-      </div>
-    </div>
-  );
-};
-
-export const SMART_DATA_BRICK_REGISTRY: Record<
-  SmartDataBlockType,
-  SmartDataBrickDefinition
-> = {
-  light: {
-    type: "light",
-    label: "光照强度",
-    icon: <BulbOutlined />,
-    shellClassName:
-      "border-amber-200/80 bg-[linear-gradient(180deg,rgba(254,243,199,0.82),rgba(255,251,235,0.72))] dark:border-amber-500/20 dark:bg-amber-500/10",
-    iconClassName:
-      "bg-amber-500/15 text-amber-600 dark:bg-amber-500/20 dark:text-amber-100",
-    render: renderLightBrick
-  },
-  climate: {
-    type: "climate",
-    label: "温湿度",
-    icon: <ExperimentOutlined />,
-    shellClassName:
-      "border-emerald-200/80 bg-[linear-gradient(180deg,rgba(220,252,231,0.84),rgba(240,253,244,0.72))] dark:border-emerald-500/20 dark:bg-emerald-500/10",
-    iconClassName:
-      "bg-emerald-500/15 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-100",
-    render: renderClimateBrick
-  },
-  camera: {
-    type: "camera",
-    label: "摄像头",
-    icon: <CameraOutlined />,
-    shellClassName:
-      "border-sky-200/80 bg-[linear-gradient(180deg,rgba(224,242,254,0.84),rgba(240,249,255,0.72))] dark:border-sky-500/20 dark:bg-sky-500/10",
-    iconClassName:
-      "bg-sky-500/15 text-sky-600 dark:bg-sky-500/20 dark:text-sky-100",
-    render: renderCameraBrick
-  }
-};
-
-const resolveCardSpanClassName = (count: number) => {
-  if (count <= 1) {
-    return "md:col-span-1 xl:col-span-4";
-  }
-
-  if (count === 2) {
-    return "md:col-span-2 xl:col-span-6";
-  }
-
-  return "md:col-span-2 xl:col-span-8";
-};
-
-const resolveCardMinHeightClassName = (count: number) => {
-  if (count <= 1) {
-    return "min-h-[320px]";
-  }
-
-  if (count === 2) {
-    return "min-h-[360px]";
-  }
-
-  return "min-h-[440px]";
-};
-
-const resolveBlockGridClassName = (count: number) => {
-  if (count <= 1) {
-    return "grid-cols-1";
-  }
-
-  return "grid-cols-1 lg:grid-cols-2";
-};
-
-const resolveBlockSlotClassName = (count: number, index: number) => {
-  if (count === 3 && index === 0) {
-    return "lg:col-span-2";
-  }
-
-  return "";
-};
-
-export const SmartDataCardBoard = ({
-  cards,
-  runtime,
-  onRemoveCard
-}: SmartDataCardBoardProps) => {
-  if (!cards.length) {
-    return (
-      <div className="flex min-h-[360px] items-center justify-center rounded-[28px] border border-dashed border-slate-300/80 bg-slate-50/70 p-8 text-center dark:border-white/12 dark:bg-white/5">
-        <div>
-          <p className="text-lg font-semibold text-slate-900 dark:text-white">容器为空</p>
-          <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-slate-300">
-            展开下方控制台后，添加模板卡片或自由拼装。
-          </p>
+    <article
+      className={clsx(
+        "relative flex h-full flex-col overflow-hidden rounded-[28px] border shadow-sm backdrop-blur-xl transition dark:shadow-none",
+        ultraCompact ? "p-3.5" : compact ? "p-4" : "p-5",
+        shellClassName
+      )}
+    >
+      <div className="smart-data-card-handle flex cursor-move items-start justify-between gap-4">
+        <div className={clsx("flex min-w-0 items-center", ultraCompact ? "gap-2" : "gap-3")}>
+          <div
+            className={clsx(
+              ultraCompact
+                ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] text-lg"
+                : "flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] text-xl",
+              iconClassName
+            )}
+          >
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <p
+              className={clsx(
+                "truncate font-semibold text-slate-950 dark:text-white",
+                ultraCompact ? "text-sm" : "text-base"
+              )}
+            >
+              {title}
+            </p>
+            {!compact ? (
+              <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-300">
+                {description}
+              </p>
+            ) : null}
+          </div>
         </div>
-      </div>
-    );
-  }
 
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-12">
-      {cards.map((card) => (
-        <article
-          key={card.id}
-          className={clsx(
-            "relative flex h-full flex-col overflow-hidden rounded-[28px] border border-slate-200/70 bg-white/78 p-4 shadow-sm dark:border-white/10 dark:bg-slate-950/55 sm:p-5",
-            resolveCardSpanClassName(card.blockTypes.length),
-            resolveCardMinHeightClassName(card.blockTypes.length)
-          )}
-        >
+        <div className="flex shrink-0 items-center gap-2">
+          {headerExtra}
           <Button
             type="text"
             danger
             icon={<DeleteOutlined />}
-            onClick={() => onRemoveCard(card.id)}
-            className="!absolute right-2 top-2 z-10"
+            onClick={onRemove}
+            className="smart-data-card-action"
           />
+        </div>
+      </div>
 
-          <div
-            className={clsx(
-              "grid h-full flex-1 gap-4 pr-8",
-              resolveBlockGridClassName(card.blockTypes.length)
-            )}
-          >
-            {card.blockTypes.map((type, index) => (
-              <div
-                key={`${card.id}-${type}-brick`}
-                className={clsx(
-                  "h-full",
-                  resolveBlockSlotClassName(card.blockTypes.length, index)
-                )}
-              >
-                <SmartDataBlockShell definition={SMART_DATA_BRICK_REGISTRY[type]}>
-                  {SMART_DATA_BRICK_REGISTRY[type].render(runtime)}
-                </SmartDataBlockShell>
-              </div>
-            ))}
-          </div>
-        </article>
-      ))}
-    </div>
+      <div
+        className={clsx(
+          "flex min-h-0 flex-1 flex-col",
+          ultraCompact ? "mt-3 gap-2" : compact ? "mt-5 gap-4" : "mt-8 gap-6"
+        )}
+      >
+        {children({ compact, ultraCompact })}
+      </div>
+    </article>
   );
+};
+
+const SmartDataMetricCard = ({
+  card,
+  runtime,
+  onRemove
+}: {
+  card: SmartDataCardOfType<"temperature" | "humidity" | "light">;
+  runtime: SmartDataRuntime;
+  onRemove: () => void;
+}) => {
+  const definition = getCardDefinition(card.type);
+  const theme = CARD_THEME[card.type];
+  const metricKey = card.type === "light" ? "light" : card.type;
+  const metric = runtime.metrics[metricKey];
+  const flowLabel =
+    runtime.socketState === "online"
+      ? "实时流"
+      : runtime.loading
+        ? "同步中"
+        : "轮询";
+
+  return (
+    <SmartDataCardFrame
+      card={card}
+      title={definition.label}
+      description={definition.description}
+      icon={theme.icon}
+      shellClassName={theme.shellClassName}
+      iconClassName={theme.iconClassName}
+      onRemove={onRemove}
+      headerExtra={!resolveCardDensity(card).ultraCompact ? <Tag color="processing">{flowLabel}</Tag> : null}
+    >
+      {({ compact, ultraCompact }) => {
+        if (!runtime.farmId) {
+          return <DataMessage message={`当前未绑定农场，无法装载${definition.label}。`} />;
+        }
+
+        if (runtime.loading && !metric) {
+          return <DataLoadingState compact={compact} />;
+        }
+
+        if (!metric) {
+          return <DataMessage message={`当前农场暂无${definition.label}数据。`} />;
+        }
+
+        return (
+          <>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500 dark:text-slate-300">
+                Real-Time Metric
+              </p>
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <span
+                  className={clsx(
+                    ultraCompact
+                      ? "text-3xl font-semibold leading-none tracking-[-0.04em]"
+                      : compact
+                        ? "text-4xl font-semibold leading-none tracking-[-0.04em]"
+                        : "text-5xl font-semibold leading-none tracking-[-0.04em]",
+                    theme.valueClassName
+                  )}
+                >
+                  {formatMetricValue(metric.metricValue)}
+                </span>
+                <span
+                  className={clsx(
+                    "font-medium text-slate-500 dark:text-slate-300",
+                    ultraCompact ? "pb-0 text-sm" : compact ? "pb-0.5 text-base" : "pb-1 text-lg"
+                  )}
+                >
+                  {metric.unit || definition.defaultUnit}
+                </span>
+              </div>
+            </div>
+
+            {ultraCompact ? null : compact ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <MetaPlate label="设备" value={String(metric.deviceId)} />
+                <MetaPlate label="更新" value={formatDateTime(metric.collectedAt)} />
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <MetaPlate label="农场" value={runtime.farmName} />
+                  <MetaPlate label="设备" value={String(metric.deviceId)} />
+                  <MetaPlate label="温室" value={`#${metric.greenhouseId}`} />
+                </div>
+
+                <div className="rounded-[22px] border border-white/65 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+                    更新时间
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-900 dark:text-white">
+                    {formatDateTime(metric.collectedAt)}
+                  </p>
+                </div>
+              </>
+            )}
+          </>
+        );
+      }}
+    </SmartDataCardFrame>
+  );
+};
+
+const SmartDataTelemetryChartCard = ({
+  card,
+  runtime,
+  onRemove
+}: {
+  card: SmartDataCardOfType<"telemetryChart">;
+  runtime: SmartDataRuntime;
+  onRemove: () => void;
+}) => {
+  const definition = getCardDefinition(card.type);
+  const theme = CARD_THEME[card.type];
+  const mode = useThemeStore((state) => state.mode);
+  const density = resolveCardDensity(card);
+
+  const telemetryChartOption = useMemo<EChartsOption | null>(() => {
+    if (runtime.telemetryHistory.length === 0) {
+      return null;
+    }
+
+    const isDark = mode === "dark";
+    const axisColor = isDark ? "rgba(226, 232, 240, 0.82)" : "rgba(51, 65, 85, 0.72)";
+    const splitLineColor = isDark ? "rgba(148, 163, 184, 0.12)" : "rgba(148, 163, 184, 0.18)";
+    const textColor = isDark ? "#f8fafc" : "#1f2937";
+    const tooltipBackground = isDark ? "rgba(3, 10, 18, 0.96)" : "rgba(255, 255, 255, 0.94)";
+    const sortedPoints = [...runtime.telemetryHistory].sort(
+      (left, right) => dayjs(left.collectedAt).valueOf() - dayjs(right.collectedAt).valueOf()
+    );
+
+    const metricCounts = new Map<string, number>();
+    sortedPoints.forEach((item) => {
+      const metricLabel = formatMetricCodeLabel(item.metricCode);
+      metricCounts.set(metricLabel, (metricCounts.get(metricLabel) ?? 0) + 1);
+    });
+
+    const groupedSeries = new Map<
+      string,
+      {
+        name: string;
+        unit: string;
+        data: [number, number][];
+      }
+    >();
+
+    sortedPoints.forEach((item) => {
+      const metricLabel = formatMetricCodeLabel(item.metricCode);
+      const seriesKey = `${normalizeMetricCode(item.metricCode)}-${item.deviceId}`;
+      const deviceSuffix =
+        (metricCounts.get(metricLabel) ?? 0) > 1 ? ` · ${item.deviceId}` : "";
+      const series = groupedSeries.get(seriesKey) ?? {
+        name: `${metricLabel}${deviceSuffix}`,
+        unit: item.unit || metricLabel,
+        data: []
+      };
+
+      series.data.push([dayjs(item.collectedAt).valueOf(), Number(item.metricValue)]);
+      groupedSeries.set(seriesKey, series);
+    });
+
+    const groupedSeriesList = Array.from(groupedSeries.values());
+    const unitList = Array.from(new Set(groupedSeriesList.map((series) => series.unit)));
+    const unitIndexMap = new Map(unitList.map((unit, index) => [unit, index]));
+    const chartPointLimit = density.ultraCompact ? 12 : density.compact ? 20 : 32;
+
+    return {
+      backgroundColor: "transparent",
+      animationDuration: 220,
+      animationDurationUpdate: 180,
+      color: TELEMETRY_CHART_COLORS,
+      legend: {
+        show: !density.compact,
+        top: 0,
+        left: 0,
+        right: 0,
+        type: "scroll",
+        icon: "roundRect",
+        itemWidth: 12,
+        itemHeight: 8,
+        itemGap: 12,
+        textStyle: {
+          color: textColor,
+          fontSize: 11
+        }
+      },
+      tooltip: density.ultraCompact
+        ? undefined
+        : {
+            trigger: "axis",
+            backgroundColor: tooltipBackground,
+            borderColor: isDark ? "rgba(52, 211, 153, 0.18)" : "rgba(21, 128, 61, 0.14)",
+            borderWidth: 1,
+            textStyle: {
+              color: textColor,
+              fontSize: 12
+            }
+          },
+      grid: {
+        top: density.compact ? 12 : 48,
+        left: density.compact ? 0 : 8,
+        right: density.compact ? 0 : 12 + Math.max(0, unitList.length - 1) * 34,
+        bottom: density.compact ? 4 : 10,
+        containLabel: !density.compact
+      },
+      xAxis: {
+        type: "time",
+        boundaryGap: [0, 0],
+        axisLine: {
+          show: false
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          show: !density.compact,
+          color: axisColor,
+          formatter: (value: number) => dayjs(value).format("HH:mm:ss")
+        },
+        splitLine: {
+          show: !density.compact,
+          lineStyle: {
+            color: splitLineColor,
+            type: "dashed"
+          }
+        }
+      },
+      yAxis: unitList.map((unit, index) => ({
+        type: "value",
+        scale: true,
+        position: index % 2 === 0 ? "left" : "right",
+        offset: index < 2 ? 0 : Math.floor(index / 2) * 36,
+        axisLine: {
+          show: false
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          show: !density.compact,
+          color: axisColor,
+          formatter: (value: number) => formatTelemetryValue(value)
+        },
+        name: density.compact ? "" : unit,
+        nameTextStyle: {
+          color: axisColor,
+          fontWeight: 500
+        },
+        splitLine: {
+          show: index === 0 && !density.compact,
+          lineStyle: {
+            color: splitLineColor,
+            type: "dashed"
+          }
+        }
+      })),
+      series: groupedSeriesList.map((series, index) => {
+        const color = TELEMETRY_CHART_COLORS[index % TELEMETRY_CHART_COLORS.length];
+
+        return {
+          name: series.name,
+          type: "line",
+          smooth: 0.35,
+          showSymbol: false,
+          yAxisIndex: unitIndexMap.get(series.unit) ?? 0,
+          lineStyle: {
+            width: density.ultraCompact ? 2 : 2.8,
+            color
+          },
+          areaStyle: density.ultraCompact
+            ? undefined
+            : {
+                color: {
+                  type: "linear",
+                  x: 0,
+                  y: 0,
+                  x2: 0,
+                  y2: 1,
+                  colorStops: [
+                    { offset: 0, color: hexToRgba(color, isDark ? 0.24 : 0.16) },
+                    { offset: 1, color: hexToRgba(color, 0.01) }
+                  ]
+                }
+              },
+          data: series.data.slice(-chartPointLimit)
+        };
+      })
+    };
+  }, [density.compact, density.ultraCompact, mode, runtime.telemetryHistory]);
+
+  return (
+    <SmartDataCardFrame
+      card={card}
+      title={definition.label}
+      description={definition.description}
+      icon={theme.icon}
+      shellClassName={theme.shellClassName}
+      iconClassName={theme.iconClassName}
+      onRemove={onRemove}
+      headerExtra={!density.ultraCompact ? <Tag color="green">趋势</Tag> : null}
+    >
+      {({ compact, ultraCompact }) => {
+        if (!runtime.farmId) {
+          return <DataMessage message="当前未绑定农场，无法装载遥测曲线。" />;
+        }
+
+        if (runtime.loading && runtime.telemetryHistory.length === 0) {
+          return <DataLoadingState compact={compact} />;
+        }
+
+        if (!telemetryChartOption) {
+          return <DataMessage message="当前农场暂无可用于绘制曲线的实时遥测数据。" />;
+        }
+
+        return (
+          <div className="flex h-full min-h-0 flex-1 flex-col">
+            {!ultraCompact ? (
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+                    Telemetry Stream
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    最近 {runtime.telemetryHistory.length} 个采样点
+                  </p>
+                </div>
+                {!compact ? <Tag color="processing">温 / 湿 / 光</Tag> : null}
+              </div>
+            ) : null}
+
+            <div className="min-h-0 flex-1 overflow-hidden rounded-[22px] border border-white/60 bg-white/74 p-2 dark:border-white/8 dark:bg-slate-950/42">
+              <ReactECharts
+                option={telemetryChartOption}
+                style={{
+                  height: "100%",
+                  minHeight: ultraCompact ? 90 : compact ? 140 : 220,
+                  width: "100%"
+                }}
+                opts={{ renderer: "canvas" }}
+                notMerge
+                lazyUpdate
+              />
+            </div>
+          </div>
+        );
+      }}
+    </SmartDataCardFrame>
+  );
+};
+
+const SmartDataBoardLightCard = ({
+  card,
+  runtime,
+  onRemove,
+  onToggleBoardLight
+}: {
+  card: SmartDataCardOfType<"boardLightControl">;
+  runtime: SmartDataRuntime;
+  onRemove: () => void;
+  onToggleBoardLight: (targetState: "ON" | "OFF") => Promise<void>;
+}) => {
+  const definition = getCardDefinition(card.type);
+  const theme = CARD_THEME[card.type];
+  const boardLight = runtime.boardLight;
+  const density = resolveCardDensity(card);
+
+  return (
+    <SmartDataCardFrame
+      card={card}
+      title={definition.label}
+      description={definition.description}
+      icon={theme.icon}
+      shellClassName={theme.shellClassName}
+      iconClassName={theme.iconClassName}
+      onRemove={onRemove}
+      headerExtra={
+        !density.ultraCompact ? (
+          <Tag color={boardLight.online ? "green" : "default"}>
+            {boardLight.online ? "在线" : "离线"}
+          </Tag>
+        ) : null
+      }
+    >
+      {({ compact, ultraCompact }) => {
+        if (!runtime.farmId) {
+          return <DataMessage message="当前未绑定农场，无法下发开发板灯控命令。" />;
+        }
+
+        if (!boardLight.available) {
+          return <DataMessage message="当前农场尚未接入 BearPi 开发板。" />;
+        }
+
+        return (
+          <div className="flex h-full flex-1 flex-col justify-between gap-4">
+            <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+              <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+                当前灯光状态
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <span
+                  className={clsx(
+                    "font-semibold tracking-[-0.03em] text-slate-900 dark:text-white",
+                    ultraCompact ? "text-2xl" : compact ? "text-3xl" : "text-4xl"
+                  )}
+                >
+                  {resolveBoardLightStateLabel(boardLight.state)}
+                </span>
+                <span
+                  className={clsx(
+                    "rounded-full border px-3 py-1 text-xs font-medium",
+                    boardLight.state === "ON"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/12 dark:text-emerald-100"
+                      : "border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                  )}
+                >
+                  {boardLight.state === "ON" ? "LED ON" : boardLight.state === "OFF" ? "LED OFF" : "未知"}
+                </span>
+              </div>
+            </div>
+
+            {!ultraCompact ? (
+              <div className={clsx("grid gap-3", compact ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
+                <MetaPlate label="设备" value={boardLight.deviceName} />
+                <MetaPlate
+                  label="控制状态"
+                  value={boardLight.pending ? "命令处理中" : boardLight.online ? "可控制" : "等待设备上线"}
+                />
+                {!compact ? (
+                  <MetaPlate
+                    label="绑定大棚"
+                    value={boardLight.greenhouseId ? `#${boardLight.greenhouseId}` : "未绑定"}
+                  />
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="flex items-center justify-between rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+              <div>
+                <p className="text-sm font-semibold text-slate-900 dark:text-white">灯光开关</p>
+                {!ultraCompact ? (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-300">
+                    通过 MQTT 指令控制 BearPi 开发板上的 LED。
+                  </p>
+                ) : null}
+              </div>
+              <Switch
+                checked={boardLight.state === "ON"}
+                loading={boardLight.pending}
+                disabled={!boardLight.greenhouseId}
+                onChange={(checked) => void onToggleBoardLight(checked ? "ON" : "OFF")}
+              />
+            </div>
+          </div>
+        );
+      }}
+    </SmartDataCardFrame>
+  );
+};
+
+const SmartDataActionCard = ({
+  card,
+  onRemove
+}: {
+  card: SmartDataCardOfType<"startDiagnosis" | "openCommunity">;
+  onRemove: () => void;
+}) => {
+  const definition = getCardDefinition(card.type);
+  const theme = CARD_THEME[card.type];
+  const navigate = useNavigate();
+
+  const actionConfig = {
+    startDiagnosis: {
+      buttonLabel: "发起诊断",
+      helperLabel: "Crop Diagnosis",
+      action: () => navigate("/crop-diagnosis")
+    },
+    openCommunity: {
+      buttonLabel: "打开论坛",
+      helperLabel: "Gengzhi Forum",
+      action: () => {
+        window.open(GENGZHI_FORUM_URL, "_blank", "noopener,noreferrer");
+      }
+    }
+  } as const;
+
+  const config = actionConfig[card.type];
+
+  return (
+    <SmartDataCardFrame
+      card={card}
+      title={definition.label}
+      description={definition.description}
+      icon={theme.icon}
+      shellClassName={theme.shellClassName}
+      iconClassName={theme.iconClassName}
+      onRemove={onRemove}
+    >
+      {({ compact, ultraCompact }) => (
+        <div className="flex h-full flex-1 flex-col justify-between">
+          <div className="rounded-[22px] border border-white/60 bg-white/78 px-4 py-4 dark:border-white/8 dark:bg-slate-950/42">
+            <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
+              {config.helperLabel}
+            </p>
+            <p
+              className={clsx(
+                "mt-3 font-semibold tracking-[-0.03em] text-slate-900 dark:text-white",
+                ultraCompact ? "text-xl" : compact ? "text-2xl" : "text-3xl"
+              )}
+            >
+              {definition.label}
+            </p>
+            {!compact ? (
+              <p className="mt-3 text-sm leading-7 text-slate-500 dark:text-slate-300">
+                {definition.description}
+              </p>
+            ) : null}
+          </div>
+
+          <Button
+            type="primary"
+            size={ultraCompact ? "middle" : "large"}
+            icon={theme.icon}
+            onClick={config.action}
+            className="smart-data-card-action mt-4"
+          >
+            {config.buttonLabel}
+          </Button>
+        </div>
+      )}
+    </SmartDataCardFrame>
+  );
+};
+
+export const SmartDataCard = ({
+  card,
+  runtime,
+  onRemove,
+  onToggleBoardLight
+}: SmartDataCardProps) => {
+  switch (card.type) {
+    case "temperature":
+    case "humidity":
+    case "light":
+      return (
+        <SmartDataMetricCard
+          card={card as SmartDataCardOfType<"temperature" | "humidity" | "light">}
+          runtime={runtime}
+          onRemove={onRemove}
+        />
+      );
+    case "telemetryChart":
+      return (
+        <SmartDataTelemetryChartCard
+          card={card as SmartDataCardOfType<"telemetryChart">}
+          runtime={runtime}
+          onRemove={onRemove}
+        />
+      );
+    case "boardLightControl":
+      return (
+        <SmartDataBoardLightCard
+          card={card as SmartDataCardOfType<"boardLightControl">}
+          runtime={runtime}
+          onRemove={onRemove}
+          onToggleBoardLight={onToggleBoardLight}
+        />
+      );
+    case "startDiagnosis":
+    case "openCommunity":
+      return (
+        <SmartDataActionCard
+          card={card as SmartDataCardOfType<"startDiagnosis" | "openCommunity">}
+          onRemove={onRemove}
+        />
+      );
+  }
 };
