@@ -27,6 +27,7 @@ export const AppLayout = () => {
   const [now, setNow] = useState(() => dayjs());
   const visibleRoutes = useMemo(() => getVisibleRoutes(), []);
   const defaultRoute = useMemo(() => getDefaultRoute(), []);
+  const isDark = mode === "dark";
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", mode === "dark");
@@ -87,10 +88,18 @@ export const AppLayout = () => {
   const isSmartDataCenterPage = selectedKey === "/smart-data-center";
   const showTopHeader = !isSmartDataCenterPage;
   const navContent = (
-    <div className="flex h-full flex-col px-4 py-5 text-white">
-      <div className="rounded-[24px] border border-white/10 bg-white/6 p-4 backdrop-blur">
-        <p className="text-xs uppercase tracking-[0.3em] text-emerald-300/80">Agri Nexus</p>
-        <h1 className="mt-3 text-xl font-semibold leading-8 text-white">
+    <div className={`flex h-full flex-col px-4 py-5 ${isDark ? "text-white" : "text-slate-900"}`}>
+      <div
+        className={`rounded-[24px] border p-4 backdrop-blur ${
+          isDark
+            ? "border-white/10 bg-white/6"
+            : "border-slate-200/90 bg-white/88 shadow-[0_18px_38px_rgba(15,23,42,0.06)]"
+        }`}
+      >
+        <p className={`text-xs uppercase tracking-[0.3em] ${isDark ? "text-emerald-300/80" : "text-emerald-700/80"}`}>
+          Agri Nexus
+        </p>
+        <h1 className={`mt-3 text-xl font-semibold leading-8 ${isDark ? "text-white" : "text-slate-950"}`}>
           智慧温室后端联调
           <br />
           前端控制台
@@ -105,13 +114,17 @@ export const AppLayout = () => {
               key={item.path}
               type="button"
               onClick={() => navigate(item.path)}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition ${
+              className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
                 active
-                  ? "bg-gradient-to-r from-brand-500 to-accent-500 text-white shadow-glow"
-                  : "bg-white/0 text-slate-300 hover:bg-white/8 hover:text-white"
+                  ? "border-transparent bg-gradient-to-r from-brand-500 to-accent-500 text-white shadow-glow"
+                  : isDark
+                    ? "border-transparent bg-white/0 text-slate-300 hover:bg-white/8 hover:text-white"
+                    : "border-transparent bg-white/0 text-slate-600 hover:border-white/80 hover:bg-white/88 hover:text-slate-950 hover:shadow-[0_12px_28px_rgba(15,23,42,0.06)]"
               }`}
             >
-              <span className="text-lg">{item.icon}</span>
+              <span className={`text-lg ${active ? "text-white" : isDark ? "text-slate-300" : "text-slate-500"}`}>
+                {item.icon}
+              </span>
               <span className="text-sm font-medium">{item.label}</span>
             </button>
           );
@@ -123,20 +136,34 @@ export const AppLayout = () => {
           href={GENGZHI_URL}
           target="_blank"
           rel="noreferrer"
-          className="group block rounded-[24px] border border-emerald-400/16 bg-[linear-gradient(135deg,rgba(6,95,70,0.34),rgba(15,23,42,0.92)_52%,rgba(4,18,20,0.94))] p-4 shadow-[0_18px_48px_rgba(2,6,23,0.26)] transition hover:-translate-y-0.5 hover:border-emerald-300/30 hover:shadow-[0_22px_54px_rgba(2,6,23,0.34)]"
+          className={`group block rounded-[24px] border p-4 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 ${
+            isDark
+              ? "border-emerald-400/16 bg-[linear-gradient(135deg,rgba(6,95,70,0.34),rgba(15,23,42,0.92)_52%,rgba(4,18,20,0.94))] shadow-[0_18px_48px_rgba(2,6,23,0.26)] hover:-translate-y-0.5 hover:border-emerald-300/30 hover:shadow-[0_22px_54px_rgba(2,6,23,0.34)]"
+              : "border-emerald-200/90 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(245,252,248,0.94)_55%,rgba(236,253,245,0.92))] shadow-[0_20px_44px_rgba(15,23,42,0.08)] hover:-translate-y-0.5 hover:border-emerald-300/90 hover:shadow-[0_24px_52px_rgba(15,23,42,0.12)]"
+          }`}
         >
           <div className="grid grid-cols-[40px_minmax(0,1fr)_40px] items-center gap-3">
             <img
               src={gengzhiMark}
               alt="耕知"
-              className="h-10 w-10 rounded-2xl border border-white/10 bg-white/10 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+              className={`h-10 w-10 rounded-2xl border p-1.5 ${
+                isDark
+                  ? "border-white/10 bg-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)]"
+                  : "border-emerald-100 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_10px_18px_rgba(15,23,42,0.06)]"
+              }`}
             />
             <div className="min-w-0 text-center">
-              <p className="text-[11px] uppercase tracking-[0.24em] text-emerald-200/68">Forum</p>
-              <p className="mt-1 text-base font-semibold text-white">耕知</p>
+              <p className={`text-[11px] uppercase tracking-[0.24em] ${isDark ? "text-emerald-200/68" : "text-emerald-700/72"}`}>Forum</p>
+              <p className={`mt-1 text-base font-semibold ${isDark ? "text-white" : "text-slate-950"}`}>耕知</p>
               {/* <p className="mt-1 text-xs text-slate-300">跟大家聊聊吧</p> */}
             </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/6 text-base text-emerald-200/88 transition group-hover:border-emerald-300/24 group-hover:bg-emerald-400/10 group-hover:text-white">
+            <div
+              className={`flex h-10 w-10 items-center justify-center rounded-2xl border text-base transition ${
+                isDark
+                  ? "border-white/10 bg-white/6 text-emerald-200/88 group-hover:border-emerald-300/24 group-hover:bg-emerald-400/10 group-hover:text-white"
+                  : "border-emerald-100 bg-white/86 text-emerald-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] group-hover:border-emerald-300/90 group-hover:bg-emerald-50 group-hover:text-emerald-800"
+              }`}
+            >
               <ExportOutlined />
             </div>
           </div>
@@ -153,7 +180,13 @@ export const AppLayout = () => {
   return (
     <div className="min-h-screen bg-transparent lg:h-screen lg:overflow-hidden">
       <div className="flex min-h-screen flex-col lg:grid lg:h-screen lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-4 lg:p-4">
-        <aside className="m-4 hidden h-[calc(100vh-2rem)] overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/90 shadow-panel lg:block">
+        <aside
+          className={`m-4 hidden h-[calc(100vh-2rem)] overflow-hidden rounded-[32px] border backdrop-blur-xl lg:block ${
+            isDark
+              ? "border-white/10 bg-slate-950/90 shadow-panel"
+              : "border-slate-200/90 bg-[linear-gradient(180deg,rgba(248,250,252,0.88),rgba(255,255,255,0.96)_48%,rgba(240,253,244,0.92))] shadow-[0_28px_68px_rgba(15,23,42,0.10)]"
+          }`}
+        >
           {navContent}
         </aside>
 
@@ -164,9 +197,18 @@ export const AppLayout = () => {
           width={300}
           className="lg:hidden"
           styles={{
-            body: { padding: 0, background: "rgba(2, 6, 23, 0.96)" },
+            body: {
+              padding: 0,
+              background: isDark
+                ? "rgba(2, 6, 23, 0.96)"
+                : "linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 244, 0.96))"
+            },
             header: { display: "none" },
-            content: { background: "rgba(2, 6, 23, 0.96)" }
+            content: {
+              background: isDark
+                ? "rgba(2, 6, 23, 0.96)"
+                : "linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 244, 0.96))"
+            }
           }}
         >
           {navContent}
@@ -174,12 +216,13 @@ export const AppLayout = () => {
 
         <main className="relative flex min-h-screen flex-col lg:min-h-0 lg:overflow-hidden">
           {!showTopHeader && (
-            <Button
-              type="text"
-              icon={<MenuOutlined />}
+            <button
+              type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="absolute left-3 top-3 z-20 !flex !h-10 !w-10 !items-center !justify-center !rounded-2xl !border !border-slate-200/80 !bg-white/85 !text-slate-700 shadow-panel backdrop-blur dark:!border-white/10 dark:!bg-slate-900/85 dark:!text-slate-100 lg:!hidden"
-            />
+              className="absolute left-3 top-3 z-20 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-lg text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.12)] backdrop-blur-md transition active:scale-95 dark:border-white/12 dark:bg-slate-900/80 dark:text-slate-100 lg:hidden"
+            >
+              <MenuOutlined />
+            </button>
           )}
 
           {showTopHeader && (
@@ -194,12 +237,13 @@ export const AppLayout = () => {
                     <Tag color="green">{consoleExperience.subtitle}</Tag>
                   </div>
                 </div>
-                <Button
-                  type="text"
-                  icon={<MenuOutlined />}
+                <button
+                  type="button"
                   onClick={() => setMobileNavOpen(true)}
-                  className="!flex !h-10 !w-10 !items-center !justify-center !rounded-2xl !border !border-slate-200/80 !bg-white/70 !text-slate-700 dark:!border-white/10 dark:!bg-slate-900/80 dark:!text-slate-100 lg:!hidden"
-                />
+                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200/80 bg-white/80 text-lg text-slate-700 shadow-[0_8px_22px_rgba(15,23,42,0.12)] backdrop-blur-md transition active:scale-95 dark:border-white/12 dark:bg-slate-900/80 dark:text-slate-100 lg:hidden"
+                >
+                  <MenuOutlined />
+                </button>
               </div>
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:mt-0 lg:justify-end">
@@ -228,7 +272,7 @@ export const AppLayout = () => {
           )}
 
           <section
-            className={`flex-1 overflow-y-auto px-3 pb-6 lg:min-h-0 lg:px-0 lg:pb-4 ${
+            className={`flex-1 min-h-0 overflow-y-auto px-3 pb-6 lg:px-0 lg:pb-4 ${
               showTopHeader ? "pt-3" : "pt-16 lg:pt-4"
             }`}
           >

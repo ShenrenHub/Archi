@@ -14,6 +14,10 @@ export default defineConfig({
     port: 6001,
     allowedHosts: ["localhost", "archi.syan.wang"],
     proxy: {
+      "/api/crop-diagnosis": {
+        target: "http://localhost:6101",
+        changeOrigin: true
+      },
       "/api": {
         target: "https://argri.syan.wang",
         changeOrigin: true

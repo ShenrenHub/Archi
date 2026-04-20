@@ -23,7 +23,9 @@ export const request = axios.create({
 });
 
 request.interceptors.request.use((config) => {
-  config.headers["Content-Type"] = "application/json";
+  if (!config.headers["Content-Type"] && !(config.data instanceof FormData)) {
+    config.headers["Content-Type"] = "application/json";
+  }
   return config;
 });
 

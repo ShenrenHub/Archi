@@ -34,22 +34,16 @@ import {
 } from "@ant-design/icons";
 import { AppCard } from "@/components/common/AppCard";
 import {
-  addDiagnosisRecord,
+  createDiagnosisRecord,
   fetchDiagnosisRecords,
-  submitExpertReviewForRecord,
+  fetchDiagnosisRecordDetail,
+  submitReviewRequest,
+  submitExpertReview,
   type DiagnosisRecord,
 } from "@/api/diagnosis";
 import { useUserStore } from "@/store/user";
 
 const Step = Steps.Step;
-
-interface AiResult {
-  disease: string;
-  confidence: number;
-  severity: string;
-  suggestions: string[];
-  imageUrl: string;
-}
 
 const statusMap: Record<
   DiagnosisRecord["status"],
@@ -62,28 +56,10 @@ const statusMap: Record<
   rejected: { label: "已驳回", color: "error", icon: <CloseCircleOutlined /> },
 };
 
-const mockAiAnalyze = (imageName: string): Promise<AiResult> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        disease: "疑似早期白粉病",
-        confidence: 0.89,
-        severity: "中度",
-        suggestions: [
-          "建议复查叶片背面菌丝分布情况，确认病害范围。",
-          "优先对高湿区域执行短时通风，降低棚内相对湿度。",
-          "如病斑扩展明显，可使用三唑酮类药剂进行局部喷施。",
-        ],
-        imageUrl:
-          "https://images.unsplash.com/photo-1592841200221-5d4f4b8d01df?auto=format&fit=crop&w=1200&q=80",
-      });
-    }, 2000);
-  });
-};
-
 export default function CropDiagnosisPage() {
   const farmId = useUserStore((state) => state.farmId);
   const displayName = useUserStore((state) => state.displayName);
+  const username = useUserStore((state) => state.username);
 
   const [viewMode, setViewMode] = useState<"list" | "flow">("list");
   const [records, setRecords] = useState<DiagnosisRecord[]>([]);
@@ -94,28 +70,35 @@ export default function CropDiagnosisPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiProgress, setAiProgress] = useState(0);
-  const [aiResult, setAiResult] = useState<AiResult | null>(null);
+  const [currentRecord, setCurrentRecord] = useState<DiagnosisRecord | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const progressTimer = useRef<number | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<DiagnosisRecord | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [reviewForm] = Form.useForm();
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   const loadRecords = async () => {
+    if (!farmId) return;
     setRecordsLoading(true);
-    const data = await fetchDiagnosisRecords();
-    setRecords(data);
-    setRecordsLoading(false);
+    try {
+      const data = await fetchDiagnosisRecords({ farmId });
+      setRecords(data);
+    } catch {
+      message.error("加载诊断记录失败");
+    } finally {
+      setRecordsLoading(false);
+    }
   };
 
   useEffect(() => {
     if (viewMode === "list") {
       void loadRecords();
     }
-  }, [viewMode]);
+  }, [viewMode, farmId]);
 
   const clearProgressTimer = () => {
     if (progressTimer.current) {
@@ -126,6 +109,14 @@ export default function CropDiagnosisPage() {
 
   const startNewDiagnosis = () => {
     resetFlow();
+    setViewMode("flow");
+  };
+
+  const continueDiagnosis = (record: DiagnosisRecord) => {
+    setCurrentRecord(record);
+    setPreviewImage(record.imageUrl);
+    setFileList([]);
+    setCurrentStep(1);
     setViewMode("flow");
   };
 
@@ -148,10 +139,16 @@ export default function CropDiagnosisPage() {
   };
 
   const startAiDiagnosis = async () => {
-    if (!previewImage) {
+    if (!previewImage || !farmId || fileList.length === 0) {
       message.warning("请先上传作物图片");
       return;
     }
+    const file = fileList[0].originFileObj;
+    if (!file) {
+      message.warning("文件读取失败");
+      return;
+    }
+
     setCurrentStep(1);
     setAiLoading(true);
     setAiProgress(0);
@@ -166,37 +163,43 @@ export default function CropDiagnosisPage() {
       });
     }, 200);
 
-    const result = await mockAiAnalyze(fileList[0]?.name || "crop.jpg");
-    clearProgressTimer();
-    setAiProgress(100);
-    setAiResult(result);
-    setAiLoading(false);
+    try {
+      const record = await createDiagnosisRecord({
+        farmId,
+        file,
+        uploadedBy: displayName || username || undefined,
+      });
+      clearProgressTimer();
+      setAiProgress(100);
+      setCurrentRecord(record);
+      setAiLoading(false);
+    } catch (err) {
+      clearProgressTimer();
+      setAiLoading(false);
+      setAiProgress(0);
+      message.error("上传或 AI 诊断失败，请重试");
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
   };
 
   const submitForExpertReview = async () => {
-    if (!aiResult || !previewImage) return;
+    if (!currentRecord) return;
     setSubmitLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
-    const recordId = `diag-${Date.now()}`;
-    addDiagnosisRecord({
-      id: recordId,
-      farmId: farmId ?? 1001,
-      imageUrl: previewImage,
-      fileName: fileList[0]?.name || "crop.jpg",
-      createdAt: new Date().toLocaleString("zh-CN"),
-      status: "pending_review",
-      aiResult: {
-        disease: aiResult.disease,
-        confidence: aiResult.confidence,
-        severity: aiResult.severity,
-        suggestions: aiResult.suggestions,
-      },
-    });
-
-    setSubmitLoading(false);
-    setCurrentStep(2);
-    message.success("已提交专家复核");
+    try {
+      const updated = await submitReviewRequest(currentRecord.id, {
+        submittedBy: displayName || username || undefined,
+      });
+      setCurrentRecord(updated);
+      setSubmitLoading(false);
+      setCurrentStep(2);
+      message.success("已提交专家复核");
+    } catch (err) {
+      setSubmitLoading(false);
+      message.error("提交复核失败，请重试");
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
   };
 
   const resetFlow = () => {
@@ -205,14 +208,23 @@ export default function CropDiagnosisPage() {
     setPreviewImage(null);
     setAiLoading(false);
     setAiProgress(0);
-    setAiResult(null);
+    setCurrentRecord(null);
     setSubmitLoading(false);
     clearProgressTimer();
   };
 
-  const openDetail = (record: DiagnosisRecord) => {
+  const openDetail = async (record: DiagnosisRecord) => {
     setSelectedRecord(record);
     setDetailOpen(true);
+    setDetailLoading(true);
+    try {
+      const fresh = await fetchDiagnosisRecordDetail(record.id);
+      setSelectedRecord(fresh);
+    } catch {
+      message.error("获取记录详情失败");
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const openReview = (record: DiagnosisRecord) => {
@@ -229,13 +241,20 @@ export default function CropDiagnosisPage() {
     if (!selectedRecord) return;
     setReviewSubmitting(true);
     try {
-      await submitExpertReviewForRecord(selectedRecord.id, {
+      await submitExpertReview(selectedRecord.id, {
         ...values,
-        expertName: displayName || "专家",
+        expertName: displayName || username || "专家",
       });
       message.success("复核提交成功");
       setReviewOpen(false);
       await loadRecords();
+      if (detailOpen) {
+        void openDetail(selectedRecord);
+      }
+    } catch (err) {
+      message.error("复核提交失败，请重试");
+      // eslint-disable-next-line no-console
+      console.error(err);
     } finally {
       setReviewSubmitting(false);
     }
@@ -290,13 +309,19 @@ export default function CropDiagnosisPage() {
       title: "操作",
       key: "action",
       render: (_, record) => (
-        <Space>
-          <Button size="small" icon={<EyeOutlined />} onClick={() => openDetail(record)}>
-            详情
-          </Button>
+        <Space wrap size="small">
+          {record.status === "ai_analyzed" ? (
+            <Button size="small" icon={<EyeOutlined />} onClick={() => continueDiagnosis(record)}>
+              查看结果
+            </Button>
+          ) : (
+            <Button size="small" icon={<EyeOutlined />} onClick={() => openDetail(record)}>
+              详情
+            </Button>
+          )}
           {record.status === "pending_review" && (
             <Button type="primary" size="small" icon={<UserOutlined />} onClick={() => openReview(record)}>
-              专家复核
+              复核
             </Button>
           )}
         </Space>
@@ -324,6 +349,7 @@ export default function CropDiagnosisPage() {
           dataSource={records}
           loading={recordsLoading}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: "max-content" }}
         />
       </AppCard>
     </div>
@@ -365,6 +391,7 @@ export default function CropDiagnosisPage() {
             icon={<RobotOutlined />}
             onClick={startAiDiagnosis}
             disabled={!previewImage}
+            loading={aiLoading && aiProgress === 0}
             className="min-w-[180px]"
           >
             开始 AI 诊断
@@ -396,7 +423,7 @@ export default function CropDiagnosisPage() {
         </AppCard>
       )}
 
-      {!aiLoading && aiResult && (
+      {!aiLoading && currentRecord?.aiResult && (
         <>
           <AppCard
             title="AI 初步判断结果"
@@ -409,7 +436,7 @@ export default function CropDiagnosisPage() {
             <div className="grid gap-6 md:grid-cols-[1fr_1.2fr]">
               <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
                 <img
-                  src={previewImage || aiResult.imageUrl}
+                  src={currentRecord.annotatedImageUrl || currentRecord.imageUrl || previewImage || ""}
                   alt="crop"
                   className="h-full max-h-[300px] w-full object-cover"
                 />
@@ -419,7 +446,9 @@ export default function CropDiagnosisPage() {
                   <MedicineBoxOutlined className="text-xl text-rose-500" />
                   <div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">病害识别</p>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{aiResult.disease}</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {currentRecord.aiResult.disease}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -427,7 +456,7 @@ export default function CropDiagnosisPage() {
                   <div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">AI 置信度</p>
                     <p className="text-lg font-semibold text-slate-900 dark:text-white">
-                      {(aiResult.confidence * 100).toFixed(1)}%
+                      {(currentRecord.aiResult.confidence * 100).toFixed(1)}%
                     </p>
                   </div>
                 </div>
@@ -435,13 +464,15 @@ export default function CropDiagnosisPage() {
                   <FileImageOutlined className="text-xl text-amber-500" />
                   <div>
                     <p className="text-sm text-slate-500 dark:text-slate-400">严重程度</p>
-                    <p className="text-lg font-semibold text-slate-900 dark:text-white">{aiResult.severity}</p>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {currentRecord.aiResult.severity}
+                    </p>
                   </div>
                 </div>
                 <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-900/60">
                   <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">AI 建议</p>
                   <ul className="list-disc space-y-1 pl-4 text-sm text-slate-600 dark:text-slate-400">
-                    {aiResult.suggestions.map((s, i) => (
+                    {currentRecord.aiResult.suggestions.map((s, i) => (
                       <li key={i}>{s}</li>
                     ))}
                   </ul>
@@ -450,7 +481,7 @@ export default function CropDiagnosisPage() {
             </div>
           </AppCard>
 
-          <div className="flex justify-center gap-3">
+          <div className="flex flex-wrap justify-center gap-3">
             <Button icon={<ArrowLeftOutlined />} onClick={() => setCurrentStep(0)} size="large">
               返回修改图片
             </Button>
@@ -478,7 +509,7 @@ export default function CropDiagnosisPage() {
           <p className="mt-2 text-sm text-slate-500">
             农业专家将在 1-3 个工作日内完成复核，您可以在下方记录列表中查看进度与结果。
           </p>
-          <div className="mt-6 flex justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Button icon={<ReloadOutlined />} onClick={startNewDiagnosis} size="large">
               发起新的诊断
             </Button>
@@ -498,23 +529,25 @@ export default function CropDiagnosisPage() {
       {viewMode === "flow" && (
         <>
           <AppCard className="!py-4">
-            <Steps current={currentStep} size="default" className="max-w-4xl mx-auto">
-              <Step
-                title="农户上传作物图片"
-                icon={<CloudUploadOutlined />}
-                description="上传清晰的叶片或植株照片"
-              />
-              <Step
-                title="AI 初步判断"
-                icon={<RobotOutlined />}
-                description="AI 自动识别病害并给出建议"
-              />
-              <Step
-                title="专家提供复审"
-                icon={<UserOutlined />}
-                description="农业专家复核并确认处置方案"
-              />
-            </Steps>
+            <div className="overflow-x-auto pb-2">
+              <Steps current={currentStep} size="default" className="min-w-[520px] max-w-4xl mx-auto">
+                <Step
+                  title={<span className="whitespace-nowrap">农户上传作物图片</span>}
+                  icon={<CloudUploadOutlined />}
+                  description={<span className="whitespace-nowrap">上传清晰的叶片或植株照片</span>}
+                />
+                <Step
+                  title={<span className="whitespace-nowrap">AI 初步判断</span>}
+                  icon={<RobotOutlined />}
+                  description={<span className="whitespace-nowrap">AI 自动识别病害并给出建议</span>}
+                />
+                <Step
+                  title={<span className="whitespace-nowrap">专家提供复审</span>}
+                  icon={<UserOutlined />}
+                  description={<span className="whitespace-nowrap">农业专家复核并确认处置方案</span>}
+                />
+              </Steps>
+            </div>
           </AppCard>
 
           <div className="flex justify-start px-1">
@@ -529,9 +562,23 @@ export default function CropDiagnosisPage() {
         </>
       )}
 
-      <Modal open={detailOpen} onCancel={() => setDetailOpen(false)} footer={null} title="诊断详情" width={720}>
+      <Modal
+        open={detailOpen}
+        onCancel={() => setDetailOpen(false)}
+        footer={null}
+        title="诊断详情"
+        width="90%"
+        style={{ maxWidth: 720 }}
+      >
         {selectedRecord && (
           <div className="space-y-5">
+            {detailLoading && (
+              <div className="py-6 text-center text-sm text-slate-500">
+                <ReloadOutlined spin className="mr-2" />
+                加载中...
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
               <img
                 src={selectedRecord.imageUrl}
@@ -592,6 +639,20 @@ export default function CropDiagnosisPage() {
             ) : (
               <Card title="专家复核结果" size="small">
                 <Empty description="暂无专家复核结果" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                {selectedRecord.status === "ai_analyzed" && (
+                  <div className="mt-3 text-center">
+                    <Button
+                      type="primary"
+                      icon={<UserOutlined />}
+                      onClick={() => {
+                        setDetailOpen(false);
+                        continueDiagnosis(selectedRecord);
+                      }}
+                    >
+                      继续诊断流程
+                    </Button>
+                  </div>
+                )}
                 {selectedRecord.status === "pending_review" && (
                   <div className="mt-3 text-center">
                     <Button
@@ -612,7 +673,14 @@ export default function CropDiagnosisPage() {
         )}
       </Modal>
 
-      <Modal open={reviewOpen} onCancel={() => setReviewOpen(false)} title="专家复核" width={560} footer={null}>
+      <Modal
+        open={reviewOpen}
+        onCancel={() => setReviewOpen(false)}
+        title="专家复核"
+        width="90%"
+        style={{ maxWidth: 560 }}
+        footer={null}
+      >
         {selectedRecord && (
           <div className="space-y-4">
             <div className="flex gap-4">
