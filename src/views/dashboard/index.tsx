@@ -97,6 +97,52 @@ export default function DashboardPage() {
   const { state, latency, lastMessage } = useMqttBridge(farmId);
   const telemetryChartRef = useRef<ReactECharts | null>(null);
 
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const startCamera = async () => {
+    setCameraLoading(true);
+    setCameraError(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("当前浏览器不支持摄像头调用");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false
+      });
+      streamRef.current = stream;
+      setCameraActive(true);
+    } catch (err) {
+      setCameraActive(false);
+      setCameraError(err instanceof Error ? err.message : "无法访问摄像头");
+    } finally {
+      setCameraLoading(false);
+    }
+  };
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+    setCameraError(null);
+  };
+
+  useEffect(() => {
+    if (cameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      void videoRef.current.play().catch(() => {
+        // ignore auto-play policy errors
+      });
+    }
+  }, [cameraActive]);
+
   const loadData = useCallback(async () => {
     if (!farmId) {
       return;
@@ -589,6 +635,50 @@ export default function DashboardPage() {
             />
           ) : (
             <Empty description="等待实时遥测数据后绘制曲线" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          )}
+        </div>
+      </AppCard>
+
+      <AppCard
+        title="实时作物检测"
+        variant="expressive"
+        extra={(
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              icon={<CameraOutlined />}
+              loading={cameraLoading}
+              onClick={() => {
+                if (cameraActive) {
+                  stopCamera();
+                } else {
+                  void startCamera();
+                }
+              }}
+            >
+              {cameraActive ? "关闭摄像头" : "打开摄像头"}
+            </Button>
+          </div>
+        )}
+      >
+        <div className="community-surface relative flex items-center justify-center overflow-hidden rounded-[24px] border border-white/60 dark:border-white/10" style={{ height: 400 }}>
+          {cameraActive ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : cameraError ? (
+            <div className="flex flex-col items-center gap-3 text-red-400 dark:text-red-400">
+              <CameraOutlined className="text-4xl" />
+              <span className="text-sm">{cameraError}</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3 text-slate-400 dark:text-slate-500">
+              <CameraOutlined className="text-4xl" />
+              <span className="text-sm">摄像头未开启</span>
+            </div>
           )}
         </div>
       </AppCard>

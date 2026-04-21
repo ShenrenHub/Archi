@@ -33,10 +33,12 @@ export interface MascotInteractResponse {
 }
 
 export async function requestMascotInteract(
-  payload: MascotInteractRequest
+  payload: MascotInteractRequest,
+  signal?: AbortSignal
 ): Promise<MascotInteractResponse> {
   const response = await fetch("/api/crop-diagnosis/mascot/interact", {
     method: "POST",
+    signal,
     headers: {
       "Content-Type": "application/json"
     },

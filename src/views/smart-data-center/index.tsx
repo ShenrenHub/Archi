@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import type { Layout } from "react-grid-layout";
+import { storage } from "@/utils/storage";
 import { requestSmartDataAssistant } from "./assistant-api";
 import { SmartDataCenterAssistantDock } from "./SmartDataCenterAssistantDock";
 import { SmartDataCenterCanvasPanel } from "./SmartDataCenterCanvasPanel";
@@ -8,7 +9,6 @@ import { SmartDataCenterConsole } from "./SmartDataCenterConsole";
 import { useSmartDataCenterRuntime } from "./useSmartDataCenterRuntime";
 import {
   applySmartDataAssistantActions,
-  buildInitialCards,
   createSmartDataCard,
   fitCardsToViewport,
   getCardDefinition,
@@ -20,8 +20,49 @@ import {
   type SmartDataCardType
 } from "./model";
 
+const SMART_DATA_CENTER_LAYOUT_STORAGE_KEY = "smart-data-center-layout-v1";
+
+const isPersistedSmartDataCard = (value: unknown): value is SmartDataCardItem => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<SmartDataCardItem> & {
+    layout?: Partial<SmartDataCardItem["layout"]>;
+  };
+
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.type === "string" &&
+    typeof candidate.createdAt === "number" &&
+    typeof candidate.layout?.i === "string" &&
+    typeof candidate.layout?.x === "number" &&
+    typeof candidate.layout?.y === "number" &&
+    typeof candidate.layout?.w === "number" &&
+    typeof candidate.layout?.h === "number"
+  );
+};
+
+const loadPersistedSmartDataCards = () => {
+  const persistedCards = storage.get<unknown[]>(SMART_DATA_CENTER_LAYOUT_STORAGE_KEY, []);
+
+  if (!Array.isArray(persistedCards)) {
+    storage.remove(SMART_DATA_CENTER_LAYOUT_STORAGE_KEY);
+    return [];
+  }
+
+  const validCards = persistedCards.filter(isPersistedSmartDataCard);
+
+  if (validCards.length !== persistedCards.length) {
+    storage.remove(SMART_DATA_CENTER_LAYOUT_STORAGE_KEY);
+    return [];
+  }
+
+  return validCards;
+};
+
 export default function SmartDataCenterPage() {
-  const [cards, setCards] = useState<SmartDataCardItem[]>(() => buildInitialCards());
+  const [cards, setCards] = useState<SmartDataCardItem[]>(() => loadPersistedSmartDataCards());
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [assistantPending, setAssistantPending] = useState(false);
   const [assistantReply, setAssistantReply] = useState("");
@@ -41,6 +82,10 @@ export default function SmartDataCenterPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    storage.set(SMART_DATA_CENTER_LAYOUT_STORAGE_KEY, cards);
+  }, [cards]);
 
   const handleAddCard = (type: SmartDataCardType) => {
     const { cards: nextCards, removedCards } = fitCardsToViewport(

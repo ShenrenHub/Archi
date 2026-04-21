@@ -16,13 +16,13 @@ import dayjs from "dayjs";
 import clsx from "clsx";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "@/store/theme";
-import { formatDateTime } from "@/utils/time";
 import {
   formatMetricCodeLabel,
   getCardDefinition,
   normalizeMetricCode,
   resolveBoardLightStateLabel,
   SMART_DATA_CARD_MIN_HEIGHT,
+  SMART_DATA_CARD_MIN_PIXEL_WIDTH,
   SMART_DATA_CARD_MIN_WIDTH,
   type SmartDataCardItem,
   type SmartDataCardType,
@@ -94,46 +94,46 @@ const CARD_THEME: Record<
     icon: <FireOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--temperature`,
     iconClassName:
-      "bg-amber-50 text-amber-700 dark:bg-amber-500/12 dark:text-amber-200",
-    valueClassName: "text-amber-700 dark:text-amber-200"
+      "bg-amber-50 text-amber-700 dark:bg-amber-400/18 dark:text-amber-400",
+    valueClassName: "text-amber-700 dark:text-amber-100"
   },
   humidity: {
     icon: <CloudOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--humidity`,
     iconClassName:
-      "bg-sky-50 text-sky-700 dark:bg-sky-500/12 dark:text-sky-200",
-    valueClassName: "text-sky-700 dark:text-sky-200"
+      "bg-sky-50 text-sky-700 dark:bg-sky-400/18 dark:text-sky-400",
+    valueClassName: "text-sky-700 dark:text-sky-100"
   },
   light: {
     icon: <BulbOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--light`,
     iconClassName:
-      "bg-yellow-50 text-yellow-700 dark:bg-yellow-500/12 dark:text-yellow-200",
-    valueClassName: "text-yellow-700 dark:text-yellow-200"
+      "bg-yellow-50 text-yellow-700 dark:bg-yellow-400/18 dark:text-yellow-400",
+    valueClassName: "text-yellow-700 dark:text-yellow-100"
   },
   telemetryChart: {
     icon: <LineChartOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--telemetry`,
     iconClassName:
-      "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/12 dark:text-emerald-200"
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-400/18 dark:text-emerald-400"
   },
   boardLightControl: {
     icon: <ThunderboltOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--board`,
     iconClassName:
-      "bg-violet-50 text-violet-700 dark:bg-violet-500/12 dark:text-violet-200"
+      "bg-violet-50 text-violet-700 dark:bg-violet-400/18 dark:text-violet-400"
   },
   startDiagnosis: {
     icon: <MedicineBoxOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--diagnosis`,
     iconClassName:
-      "bg-rose-50 text-rose-700 dark:bg-rose-500/12 dark:text-rose-200"
+      "bg-rose-50 text-rose-700 dark:bg-rose-400/18 dark:text-rose-400"
   },
   openCommunity: {
     icon: <ExportOutlined />,
     shellClassName: `${SMART_DATA_SURFACE_CLASS} smart-data-card-surface--community`,
     iconClassName:
-      "bg-blue-50 text-blue-700 dark:bg-blue-500/12 dark:text-blue-200"
+      "bg-blue-50 text-blue-700 dark:bg-blue-400/18 dark:text-blue-400"
   }
 };
 
@@ -148,7 +148,7 @@ const resolveCardDensity = (
   const ultraCompact =
     heightUnits <= SMART_DATA_CARD_MIN_HEIGHT ||
     widthUnits <= SMART_DATA_CARD_MIN_WIDTH ||
-    (pixelWidth !== null && pixelWidth < 210) ||
+    (pixelWidth !== null && pixelWidth < SMART_DATA_CARD_MIN_PIXEL_WIDTH) ||
     (pixelHeight !== null && pixelHeight < 175);
   const compact =
     ultraCompact ||
@@ -236,23 +236,64 @@ const DataMessage = ({ message }: { message: string }) => (
 
 const DataLoadingState = ({
   compact = false,
-  minimal = false
+  minimal = false,
+  tone = "telemetry"
 }: {
   compact?: boolean;
   minimal?: boolean;
-}) => (
-  <div className={clsx("space-y-4", compact ? "pt-2" : "")}>
-    <div className={clsx("animate-pulse rounded-full bg-slate-200/75 dark:bg-white/8", minimal ? "h-5 w-16" : "h-7 w-24")} />
-    <div className={clsx("animate-pulse rounded-[20px] bg-slate-200/75 dark:bg-white/8", minimal ? "h-12" : "h-16")} />
-    {!minimal ? (
-      <div className={clsx("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
-        <div className="h-20 animate-pulse rounded-[18px] bg-slate-200/75 dark:bg-white/8" />
-        <div className="h-20 animate-pulse rounded-[18px] bg-slate-200/75 dark:bg-white/8" />
-        {!compact ? <div className="h-20 animate-pulse rounded-[18px] bg-slate-200/75 dark:bg-white/8" /> : null}
+  tone?: "temperature" | "humidity" | "light" | "telemetry";
+}) => {
+  const metaCount = compact ? 2 : 3;
+  const loadingToneClassName = `smart-data-loading-line--${tone}`;
+
+  return (
+    <div className={clsx("flex h-full min-h-0 flex-1 flex-col", compact ? "gap-3 pt-1" : "gap-4")}> 
+      {!minimal ? (
+        <div className="flex justify-end">
+          <div className={clsx("smart-data-loading-line h-6 w-16 rounded-full", loadingToneClassName)} />
+        </div>
+      ) : null}
+
+      <div className={clsx(SMART_DATA_INNER_PANEL_CLASS, minimal ? "space-y-3" : "space-y-4")}>
+        {!minimal ? (
+          <div className={clsx("smart-data-loading-line h-3 w-24 rounded-full", loadingToneClassName)} />
+        ) : null}
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div
+            className={clsx(
+              "smart-data-loading-line rounded-[18px]",
+              loadingToneClassName,
+              minimal ? "h-12 w-28" : compact ? "h-14 w-36" : "h-16 w-44"
+            )}
+          />
+          {!minimal ? (
+            <div className={clsx("smart-data-loading-line h-6 w-14 rounded-full", loadingToneClassName)} />
+          ) : null}
+        </div>
       </div>
-    ) : null}
-  </div>
-);
+
+      {!minimal ? (
+        <div className={clsx("grid gap-3", compact ? "grid-cols-2" : "sm:grid-cols-3")}>
+          {Array.from({ length: metaCount }, (_, index) => (
+            <div
+              key={`loading-meta-${index}`}
+              className="community-surface rounded-[18px] border border-white/60 px-4 py-3 dark:border-white/10"
+            >
+              <div className={clsx("smart-data-loading-line h-3 w-14 rounded-full", loadingToneClassName)} />
+              <div
+                className={clsx(
+                  "smart-data-loading-line mt-3 h-5 w-full max-w-[7rem] rounded-full",
+                  loadingToneClassName
+                )}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
 
 const MetaPlate = ({
   label,
@@ -476,7 +517,13 @@ const SmartDataMetricCard = ({
         }
 
         if (runtime.loading && !metric) {
-          return <DataLoadingState compact={compact} minimal={!showCompactMeta} />;
+          return (
+            <DataLoadingState
+              compact={compact}
+              minimal={!showCompactMeta}
+              tone={card.type}
+            />
+          );
         }
 
         if (!metric) {
@@ -524,26 +571,14 @@ const SmartDataMetricCard = ({
             </div>
 
             {showDetailedMeta ? (
-              <>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <MetaPlate label="农场" value={runtime.farmName} />
-                  <MetaPlate label="设备" value={String(metric.deviceId)} />
-                  <MetaPlate label="温室" value={`#${metric.greenhouseId}`} />
-                </div>
-
-                <div className={SMART_DATA_INNER_PANEL_CLASS}>
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500 dark:text-slate-300">
-                    更新时间
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-slate-900 dark:text-white">
-                    {formatDateTime(metric.collectedAt)}
-                  </p>
-                </div>
-              </>
-            ) : showCompactMeta ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <MetaPlate label="农场" value={runtime.farmName} />
                 <MetaPlate label="设备" value={String(metric.deviceId)} />
-                <MetaPlate label="更新" value={formatDateTime(metric.collectedAt)} />
+                <MetaPlate label="温室" value={`#${metric.greenhouseId}`} />
+              </div>
+            ) : showCompactMeta ? (
+              <div className="grid gap-3 sm:grid-cols-1">
+                <MetaPlate label="设备" value={String(metric.deviceId)} />
               </div>
             ) : null}
           </>
@@ -791,7 +826,7 @@ const SmartDataTelemetryChartCard = ({
         }
 
         if (runtime.loading && runtime.telemetryHistory.length === 0) {
-          return <DataLoadingState compact={compact} minimal={!showSummary} />;
+          return <DataLoadingState compact={compact} minimal={!showSummary} tone="telemetry" />;
         }
 
         if (!telemetryChartOption) {

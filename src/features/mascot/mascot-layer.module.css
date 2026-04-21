@@ -23,7 +23,6 @@
   touch-action: none;
 }
 
-.actor:active,
 .dragging {
   cursor: grabbing;
 }

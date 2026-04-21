@@ -1,66 +1,44 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { requestMascotInteract, type MascotTrigger } from "@/api/mascot";
 import spriteUrl from "@/assets/mascot-znm.png";
-import type { MascotInteractResponse, MascotTargetZone } from "@/api/mascot";
 import { mascotPhrases, type MascotRouteKey } from "./phrases";
-import { useMascotBrain } from "./use-mascot-brain";
 import styles from "./mascot-layer.module.css";
 
 type Point = { x: number; y: number };
-type Rect = { left: number; top: number; right: number; bottom: number };
-type DragState = {
-  pointerId: number;
-  offsetX: number;
-  offsetY: number;
-  startX: number;
-  startY: number;
-  lastX: number;
-};
 
 const SPRITE_WIDTH = 60;
 const SPRITE_HEIGHT = 56;
-const EDGE_PADDING = 12;
-const ARRIVE_DISTANCE = 8;
-const MOVE_SPEED_MIN = 26;
-const MOVE_SPEED_MAX = 42;
-const MIN_WAIT_MS = 750;
-const MAX_WAIT_MS = 2100;
-const AUTO_SPEAK_MIN_MS = 11000;
-const AUTO_SPEAK_MAX_MS = 18000;
-const DRAG_START_DISTANCE = 6;
-const OBSTACLE_QUERY = [
-  "aside",
-  "header",
-  "nav",
-  "button",
-  "a[href]",
-  "input",
-  "textarea",
-  "select",
-  ".ant-drawer",
-  ".ant-modal-root",
-  ".ant-select-dropdown",
-  ".ant-dropdown",
-  ".ant-popover",
-  ".ant-picker-dropdown",
-  "[role='button']",
-  "[data-mascot-avoid]"
-].join(",");
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function rand(min: number, max: number) {
-  return min + Math.random() * (max - min);
-}
+const RIGHT_OFFSET = 18;
+const BOTTOM_OFFSET = 18;
+const CLIENT_ID_STORAGE_KEY = "archi:mascot-client-id";
+const POSITION_STORAGE_KEY = "archi:mascot-position";
+const DRAG_THRESHOLD = 6;
+const THINKING_PHRASES = [
+  "筑泥魔去翻一下温室档案...",
+  "等下，我问问后面的脑子...",
+  "我看看这页现在在忙什么..."
+];
+const ROUTE_LABELS: Record<MascotRouteKey, string> = {
+  dashboard: "驾驶舱",
+  "smart-data-center": "智慧数据中心",
+  "device-control": "设备控制",
+  "crop-diagnosis": "作物诊断",
+  admin: "管理后台",
+  community: "耕知社区",
+  default: "平台页面"
+};
 
 function randInt(min: number, max: number) {
-  return Math.floor(rand(min, max + 1));
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function randomItem(items: string[]) {
   return items[randInt(0, items.length - 1)];
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function routeKey(pathname: string): MascotRouteKey {
@@ -73,140 +51,113 @@ function routeKey(pathname: string): MascotRouteKey {
   return "default";
 }
 
-function collectObstacles() {
-  return Array.from(document.querySelectorAll<HTMLElement>(OBSTACLE_QUERY))
-    .filter((node) => !node.closest("[data-mascot-root='true']"))
-    .map((node) => node.getBoundingClientRect())
-    .filter((rect) => rect.width > 24 && rect.height > 20)
-    .map(
-      (rect): Rect => ({
-        left: rect.left - 10,
-        top: rect.top - 10,
-        right: rect.right + 10,
-        bottom: rect.bottom + 10
-      })
-    );
-}
-
-function spriteRect(x: number, y: number): Rect {
-  return { left: x, top: y, right: x + SPRITE_WIDTH, bottom: y + SPRITE_HEIGHT };
-}
-
-function intersects(a: Rect, b: Rect) {
-  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-}
-
-function collides(x: number, y: number, obstacles: Rect[]) {
-  const rect = spriteRect(x, y);
-  return obstacles.some((obstacle) => intersects(rect, obstacle));
-}
-
-function clampPosition(point: Point, viewport: Point) {
+function resolveDockedPosition() {
   return {
-    x: clamp(point.x, EDGE_PADDING, viewport.x - SPRITE_WIDTH - EDGE_PADDING),
-    y: clamp(point.y, EDGE_PADDING, viewport.y - SPRITE_HEIGHT - EDGE_PADDING)
+    x: Math.max(12, window.innerWidth - SPRITE_WIDTH - RIGHT_OFFSET),
+    y: Math.max(12, window.innerHeight - SPRITE_HEIGHT - BOTTOM_OFFSET)
   };
 }
 
-function pickTarget(viewport: Point, obstacles: Rect[]) {
-  const maxX = Math.max(EDGE_PADDING, viewport.x - SPRITE_WIDTH - EDGE_PADDING);
-  const maxY = Math.max(EDGE_PADDING, viewport.y - SPRITE_HEIGHT - EDGE_PADDING);
-
-  for (let index = 0; index < 40; index += 1) {
-    const x = rand(EDGE_PADDING, maxX);
-    const y = rand(EDGE_PADDING, maxY);
-    if (!collides(x, y, obstacles)) {
-      return { x, y };
-    }
-  }
-
+function clampPosition(position: Point) {
   return {
-    x: clamp(viewport.x * 0.72 - SPRITE_WIDTH * 0.5, EDGE_PADDING, maxX),
-    y: clamp(viewport.y * 0.7 - SPRITE_HEIGHT * 0.5, EDGE_PADDING, maxY)
+    x: clamp(position.x, 12, Math.max(12, window.innerWidth - SPRITE_WIDTH - 12)),
+    y: clamp(position.y, 12, Math.max(12, window.innerHeight - SPRITE_HEIGHT - 12))
   };
 }
 
-function pickTargetForZone(viewport: Point, obstacles: Rect[], zone: MascotTargetZone) {
-  if (zone === "none") {
-    return pickTarget(viewport, obstacles);
+function resolveSavedPosition() {
+  if (typeof window === "undefined") {
+    return { x: 24, y: 120 };
   }
 
-  const zoneCandidates: Record<Exclude<MascotTargetZone, "none">, Array<[number, number]>> = {
-    left: [
-      [0.16, 0.62],
-      [0.2, 0.42]
-    ],
-    right: [
-      [0.78, 0.58],
-      [0.72, 0.36]
-    ],
-    center: [
-      [0.5, 0.56],
-      [0.52, 0.34]
-    ],
-    "top-left": [
-      [0.16, 0.22],
-      [0.22, 0.34]
-    ],
-    "top-right": [
-      [0.78, 0.2],
-      [0.72, 0.34]
-    ],
-    "bottom-left": [
-      [0.18, 0.78],
-      [0.26, 0.66]
-    ],
-    "bottom-right": [
-      [0.78, 0.78],
-      [0.68, 0.66]
-    ]
-  };
-
-  const maxX = Math.max(EDGE_PADDING, viewport.x - SPRITE_WIDTH - EDGE_PADDING);
-  const maxY = Math.max(EDGE_PADDING, viewport.y - SPRITE_HEIGHT - EDGE_PADDING);
-
-  for (const [xRatio, yRatio] of zoneCandidates[zone]) {
-    const x = clamp(viewport.x * xRatio - SPRITE_WIDTH * 0.5, EDGE_PADDING, maxX);
-    const y = clamp(viewport.y * yRatio - SPRITE_HEIGHT * 0.5, EDGE_PADDING, maxY);
-    if (!collides(x, y, obstacles)) {
-      return { x, y };
+  try {
+    const raw = window.localStorage.getItem(POSITION_STORAGE_KEY);
+    if (!raw) {
+      return resolveDockedPosition();
     }
+
+    const parsed = JSON.parse(raw) as Partial<Point>;
+    if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+      return clampPosition(parsed as Point);
+    }
+  } catch {
+    // Ignore malformed storage and fall back to the default docked position.
   }
 
-  return pickTarget(viewport, obstacles);
+  return resolveDockedPosition();
+}
+
+function persistPosition(position: Point) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(POSITION_STORAGE_KEY, JSON.stringify(position));
+  } catch {
+    // Ignore storage failures and keep the current in-memory position.
+  }
+}
+
+function resolveClientId() {
+  if (typeof window === "undefined") {
+    return "mascot-web";
+  }
+
+  try {
+    const existing = window.localStorage.getItem(CLIENT_ID_STORAGE_KEY);
+    if (existing) {
+      return existing;
+    }
+  } catch {
+    // Ignore storage failures and fall back to an ephemeral id.
+  }
+
+  const generated =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `mascot-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  try {
+    window.localStorage.setItem(CLIENT_ID_STORAGE_KEY, generated);
+  } catch {
+    // Ignore storage failures and keep using the generated id for this session.
+  }
+
+  return generated;
+}
+
+function collectVisibleText() {
+  if (typeof document === "undefined") {
+    return "";
+  }
+
+  return (document.body?.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 420);
 }
 
 export function MascotLayer({ dark }: { dark: boolean }) {
   const location = useLocation();
-  const { pending, requestDecision } = useMascotBrain(location.pathname);
-
   const [mounted, setMounted] = useState(false);
   const [position, setPosition] = useState<Point>({ x: 24, y: 120 });
   const [speech, setSpeech] = useState("");
-  const [pose, setPose] = useState<"idle" | "walk">("idle");
   const [jumping, setJumping] = useState(false);
-  const [facing, setFacing] = useState<1 | -1>(1);
   const [dragging, setDragging] = useState(false);
-
-  const frameRef = useRef<number | undefined>(undefined);
   const speechTimeoutRef = useRef<number | undefined>(undefined);
   const jumpTimeoutRef = useRef<number | undefined>(undefined);
+  const lastRouteRef = useRef("");
+  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const clientIdRef = useRef("");
   const positionRef = useRef<Point>({ x: 24, y: 120 });
-  const viewportRef = useRef<Point>({ x: 0, y: 0 });
-  const targetRef = useRef<Point | null>(null);
-  const waitUntilRef = useRef(0);
-  const nextSpeakAtRef = useRef(0);
-  const speedRef = useRef(MOVE_SPEED_MIN);
-  const obstaclesRef = useRef<Rect[]>([]);
-  const lastObstacleRefreshRef = useRef(0);
-  const speechRef = useRef("");
-  const lastRouteDecisionRef = useRef("");
-  const showSpeechRef = useRef<(line: string, durationMs?: number) => void>(() => undefined);
-  const triggerHopRef = useRef<() => void>(() => undefined);
-  const applyDecisionRef = useRef<(decision: MascotInteractResponse) => void>(() => undefined);
-  const dragStateRef = useRef<DragState | null>(null);
-  const draggingRef = useRef(false);
   const suppressClickRef = useRef(false);
+  const dragRef = useRef({
+    pointerId: null as number | null,
+    startClientX: 0,
+    startClientY: 0,
+    offsetX: 0,
+    offsetY: 0,
+    moved: false
+  });
 
   const phrasePool = useMemo(() => {
     const key = routeKey(location.pathname);
@@ -215,217 +166,205 @@ export function MascotLayer({ dark }: { dark: boolean }) {
 
   useEffect(() => {
     setMounted(true);
+    clientIdRef.current = resolveClientId();
+    const initialPosition = resolveSavedPosition();
+    positionRef.current = initialPosition;
+    setPosition(initialPosition);
   }, []);
 
-  useEffect(() => {
-    speechRef.current = speech;
-  }, [speech]);
+  const updatePosition = (nextPosition: Point) => {
+    const clampedPosition = clampPosition(nextPosition);
+    positionRef.current = clampedPosition;
+    setPosition((current) =>
+      current.x === clampedPosition.x && current.y === clampedPosition.y ? current : clampedPosition
+    );
+    return clampedPosition;
+  };
 
-  const showSpeech = (line: string, durationMs = 3400) => {
-    speechRef.current = line;
-    setSpeech(line);
+  const showSpeech = (nextSpeech: string, durationMs: number) => {
     window.clearTimeout(speechTimeoutRef.current);
-    if (durationMs > 0) {
-      speechTimeoutRef.current = window.setTimeout(() => {
-        speechRef.current = "";
-        setSpeech("");
-      }, durationMs);
-    }
-    nextSpeakAtRef.current = performance.now() + randInt(AUTO_SPEAK_MIN_MS, AUTO_SPEAK_MAX_MS);
+    setSpeech(nextSpeech);
+    speechTimeoutRef.current = window.setTimeout(() => setSpeech(""), durationMs);
   };
 
   const triggerHop = () => {
-    setJumping(false);
     window.clearTimeout(jumpTimeoutRef.current);
+    setJumping(false);
     requestAnimationFrame(() => {
       setJumping(true);
       jumpTimeoutRef.current = window.setTimeout(() => setJumping(false), 580);
     });
   };
 
-  useEffect(() => {
-    if (!mounted) {
-      return;
-    }
+  const triggerInteraction = async (trigger: MascotTrigger) => {
+    const nextRequestId = requestIdRef.current + 1;
+    requestIdRef.current = nextRequestId;
 
-    const refreshViewport = () => {
-      viewportRef.current = { x: window.innerWidth, y: window.innerHeight };
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-      positionRef.current = clampPosition(positionRef.current, viewportRef.current);
-      setPosition(positionRef.current);
-    };
-
-    const refreshObstacles = () => {
-      obstaclesRef.current = collectObstacles();
-      lastObstacleRefreshRef.current = performance.now();
-    };
-
-    const speak = (line?: string, durationMs = 3400) => {
-      const nextLine = line ?? randomItem(phrasePool);
-      showSpeech(nextLine, durationMs);
-    };
-
-    const hop = () => {
+    if (trigger === "click") {
       triggerHop();
-    };
+    }
 
-    const applyDecision = (decision: MascotInteractResponse) => {
-      speak(decision.speech, decision.durationMs);
+    showSpeech(randomItem(THINKING_PHRASES), 16000);
 
-      if (decision.action === "hop") {
-        hop();
-      }
+    const key = routeKey(location.pathname);
 
-      speedRef.current =
-        decision.mood === "alert"
-          ? rand(36, 48)
-          : decision.mood === "curious"
-            ? rand(30, 44)
-            : rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
-
-      if (decision.targetZone !== "none") {
-        targetRef.current = pickTargetForZone(
-          viewportRef.current,
-          obstaclesRef.current,
-          decision.targetZone
-        );
-        waitUntilRef.current = performance.now() + 120;
-      }
-    };
-
-    showSpeechRef.current = speak;
-    triggerHopRef.current = hop;
-    applyDecisionRef.current = applyDecision;
-
-    refreshViewport();
-    refreshObstacles();
-
-    positionRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-    setPosition(positionRef.current);
-    targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-    speedRef.current = rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
-    waitUntilRef.current = performance.now() + 600;
-    nextSpeakAtRef.current = performance.now() + 1500;
-
-    const loop = (now: number) => {
-      if (document.hidden) {
-        frameRef.current = window.requestAnimationFrame(loop);
-        return;
-      }
-
-      if (now - lastObstacleRefreshRef.current > 900) {
-        refreshObstacles();
-      }
-
-      if (now >= nextSpeakAtRef.current && !speechRef.current) {
-        speak();
-      }
-
-      if (draggingRef.current) {
-        setPose("idle");
-        frameRef.current = window.requestAnimationFrame(loop);
-        return;
-      }
-
-      if (now < waitUntilRef.current) {
-        setPose("idle");
-        frameRef.current = window.requestAnimationFrame(loop);
-        return;
-      }
-
-      if (!targetRef.current) {
-        targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-        speedRef.current = rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
-      }
-
-      const current = positionRef.current;
-      const target = targetRef.current;
-      const dx = target.x - current.x;
-      const dy = target.y - current.y;
-      const distance = Math.hypot(dx, dy);
-
-      if (distance <= ARRIVE_DISTANCE) {
-        targetRef.current = null;
-        waitUntilRef.current = now + randInt(MIN_WAIT_MS, MAX_WAIT_MS);
-        setPose("idle");
-        if (Math.random() > 0.58) {
-          hop();
-        }
-        frameRef.current = window.requestAnimationFrame(loop);
-        return;
-      }
-
-      const step = Math.min(speedRef.current / 60, distance);
-      const nextX = clamp(
-        current.x + (dx / distance) * step,
-        EDGE_PADDING,
-        viewportRef.current.x - SPRITE_WIDTH - EDGE_PADDING
-      );
-      const nextY = clamp(
-        current.y + (dy / distance) * step,
-        EDGE_PADDING,
-        viewportRef.current.y - SPRITE_HEIGHT - EDGE_PADDING
+    try {
+      const result = await requestMascotInteract(
+        {
+          clientId: clientIdRef.current || resolveClientId(),
+          trigger,
+          route: location.pathname,
+          routeLabel: ROUTE_LABELS[key],
+          pageTitle: document.title,
+          pageSummary: `${ROUTE_LABELS[key]} (${location.pathname})`,
+          visibleText: collectVisibleText()
+        },
+        controller.signal
       );
 
-      if (collides(nextX, nextY, obstaclesRef.current)) {
-        targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-        waitUntilRef.current = now + randInt(180, 460);
-        setPose("idle");
-        frameRef.current = window.requestAnimationFrame(loop);
+      if (controller.signal.aborted || nextRequestId !== requestIdRef.current) {
         return;
       }
 
-      positionRef.current = { x: nextX, y: nextY };
-      setPosition(positionRef.current);
-      setFacing(dx >= 0 ? 1 : -1);
-      setPose("walk");
-      frameRef.current = window.requestAnimationFrame(loop);
-    };
+      if (result.action === "hop") {
+        triggerHop();
+      }
 
-    const handleResize = () => {
-      refreshViewport();
-      refreshObstacles();
-      targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-    };
+      showSpeech(result.speech, clamp(result.durationMs || 3200, 1800, 9000));
+    } catch (error) {
+      if (controller.signal.aborted || nextRequestId !== requestIdRef.current) {
+        return;
+      }
 
-    const handleScroll = () => {
-      refreshObstacles();
-    };
-
-    speak(randomItem(phrasePool));
-    frameRef.current = window.requestAnimationFrame(loop);
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("scroll", handleScroll, true);
-
-    return () => {
-      window.cancelAnimationFrame(frameRef.current ?? 0);
-      window.clearTimeout(speechTimeoutRef.current);
-      window.clearTimeout(jumpTimeoutRef.current);
-      window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleScroll, true);
-    };
-  }, [mounted, phrasePool]);
+      showSpeech(randomItem(phrasePool), 2600);
+    }
+  };
 
   useEffect(() => {
     if (!mounted) {
       return;
     }
 
-    const routeKeyValue = location.pathname;
-    const timer = window.setTimeout(async () => {
-      if (lastRouteDecisionRef.current === routeKeyValue) {
+    const syncPosition = () => {
+      const nextPosition = clampPosition(positionRef.current);
+      positionRef.current = nextPosition;
+      setPosition((current) =>
+        current.x === nextPosition.x && current.y === nextPosition.y ? current : nextPosition
+      );
+      persistPosition(nextPosition);
+    };
+
+    syncPosition();
+    window.addEventListener("resize", syncPosition);
+    return () => window.removeEventListener("resize", syncPosition);
+  }, [mounted]);
+
+  const finishDrag = () => {
+    if (dragRef.current.pointerId === null) {
+      return;
+    }
+
+    const didMove = dragRef.current.moved;
+    dragRef.current.pointerId = null;
+    dragRef.current.moved = false;
+    setDragging(false);
+
+    if (!didMove) {
+      return;
+    }
+
+    suppressClickRef.current = true;
+    persistPosition(positionRef.current);
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0 && event.pointerType !== "touch" && event.pointerType !== "pen") {
+      return;
+    }
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    dragRef.current.pointerId = event.pointerId;
+    dragRef.current.startClientX = event.clientX;
+    dragRef.current.startClientY = event.clientY;
+    dragRef.current.offsetX = event.clientX - rect.left;
+    dragRef.current.offsetY = event.clientY - rect.top;
+    dragRef.current.moved = false;
+    suppressClickRef.current = false;
+    setDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (!dragRef.current.moved) {
+      const deltaX = event.clientX - dragRef.current.startClientX;
+      const deltaY = event.clientY - dragRef.current.startClientY;
+      if (Math.hypot(deltaX, deltaY) < DRAG_THRESHOLD) {
         return;
       }
 
-      lastRouteDecisionRef.current = routeKeyValue;
-      const decision = await requestDecision("route-change");
-      if (decision) {
-        applyDecisionRef.current(decision);
-      }
-    }, 1500);
+      dragRef.current.moved = true;
+    }
+
+    event.preventDefault();
+    updatePosition({
+      x: event.clientX - dragRef.current.offsetX,
+      y: event.clientY - dragRef.current.offsetY
+    });
+  };
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  const handlePointerCancel = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) {
+      return;
+    }
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  };
+
+  useEffect(() => {
+    if (!mounted) {
+      return;
+    }
+
+    if (lastRouteRef.current === location.pathname) {
+      return;
+    }
+
+    lastRouteRef.current = location.pathname;
+    const timer = window.setTimeout(() => {
+      void triggerInteraction("route-change");
+    }, 260);
 
     return () => window.clearTimeout(timer);
-  }, [mounted, location.pathname, requestDecision]);
+  }, [mounted, location.pathname, phrasePool]);
+
+  useEffect(() => {
+    return () => {
+      finishDrag();
+      abortRef.current?.abort();
+      window.clearTimeout(speechTimeoutRef.current);
+      window.clearTimeout(jumpTimeoutRef.current);
+    };
+  }, []);
 
   if (!mounted) {
     return null;
@@ -440,126 +379,23 @@ export function MascotLayer({ dark }: { dark: boolean }) {
         type="button"
         className={[styles.actor, dragging ? styles.dragging : ""].join(" ")}
         style={{ transform: `translate3d(${position.x}px, ${position.y}px, 0)` }}
-        onPointerDown={(event) => {
-          suppressClickRef.current = false;
-          dragStateRef.current = {
-            pointerId: event.pointerId,
-            offsetX: event.clientX - positionRef.current.x,
-            offsetY: event.clientY - positionRef.current.y,
-            startX: event.clientX,
-            startY: event.clientY,
-            lastX: event.clientX
-          };
-          event.currentTarget.setPointerCapture(event.pointerId);
-        }}
-        onPointerMove={(event) => {
-          const dragState = dragStateRef.current;
-          if (!dragState || dragState.pointerId !== event.pointerId) {
-            return;
-          }
-
-          const dragDistance = Math.hypot(
-            event.clientX - dragState.startX,
-            event.clientY - dragState.startY
-          );
-
-          if (!draggingRef.current && dragDistance < DRAG_START_DISTANCE) {
-            return;
-          }
-
-          if (!draggingRef.current) {
-            draggingRef.current = true;
-            suppressClickRef.current = true;
-            setDragging(true);
-            setPose("idle");
-            targetRef.current = null;
-            showSpeechRef.current("拖我去巡逻也行。", 1200);
-          }
-
-          const nextPosition = clampPosition(
-            {
-              x: event.clientX - dragState.offsetX,
-              y: event.clientY - dragState.offsetY
-            },
-            viewportRef.current
-          );
-
-          setFacing(event.clientX >= dragState.lastX ? 1 : -1);
-          dragState.lastX = event.clientX;
-          positionRef.current = nextPosition;
-          setPosition(nextPosition);
-        }}
-        onPointerUp={(event) => {
-          const dragState = dragStateRef.current;
-          if (!dragState || dragState.pointerId !== event.pointerId) {
-            return;
-          }
-
-          dragStateRef.current = null;
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          }
-
-          if (!draggingRef.current) {
-            return;
-          }
-
-          draggingRef.current = false;
-          setDragging(false);
-          targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-          waitUntilRef.current = performance.now() + 320;
-          speedRef.current = rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
-        }}
-        onPointerCancel={(event) => {
-          const dragState = dragStateRef.current;
-          if (!dragState || dragState.pointerId !== event.pointerId) {
-            return;
-          }
-
-          dragStateRef.current = null;
-          draggingRef.current = false;
-          setDragging(false);
-          targetRef.current = pickTarget(viewportRef.current, obstaclesRef.current);
-          waitUntilRef.current = performance.now() + 320;
-          speedRef.current = rand(MOVE_SPEED_MIN, MOVE_SPEED_MAX);
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          }
-        }}
-        onClick={async () => {
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onLostPointerCapture={finishDrag}
+        onClick={() => {
           if (suppressClickRef.current) {
             suppressClickRef.current = false;
             return;
           }
 
-          triggerHopRef.current();
-
-          if (pending) {
-            showSpeechRef.current("别急，我还在想。", 1600);
-            return;
-          }
-
-          showSpeechRef.current("让我想一下，可能要十几秒。", 30000);
-          const decision = await requestDecision("click");
-
-          if (decision) {
-            applyDecisionRef.current(decision);
-            return;
-          }
-
-          showSpeechRef.current("刚才没想明白，你再戳我一下。", 2200);
+          void triggerInteraction("click");
         }}
         aria-label="筑泥魔"
       >
         {speech ? <div className={styles.bubble}>{speech}</div> : null}
-        <div
-          className={[
-            styles.spriteWrap,
-            pose === "walk" ? styles.walk : styles.idle,
-            jumping ? styles.jump : ""
-          ].join(" ")}
-          style={{ transform: `scaleX(${facing})` }}
-        >
+        <div className={[styles.spriteWrap, styles.idle, jumping ? styles.jump : ""].join(" ")}>
           <div className={styles.shadow} />
           <img src={spriteUrl} alt="" className={styles.image} draggable={false} />
         </div>

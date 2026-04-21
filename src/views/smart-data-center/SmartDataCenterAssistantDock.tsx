@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { AudioOutlined } from "@ant-design/icons";
 import { Button, Input, Modal, Tooltip } from "antd";
 
@@ -26,6 +26,20 @@ const KeyboardGlyph = () => (
   </svg>
 );
 
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return Boolean(
+    target.closest("input, textarea, select, button, a, [contenteditable='true'], [role='button']")
+  );
+};
+
 export const SmartDataCenterAssistantDock = ({
   pending,
   lastReply,
@@ -33,7 +47,29 @@ export const SmartDataCenterAssistantDock = ({
 }: SmartDataCenterAssistantDockProps) => {
   const [open, setOpen] = useState(false);
   const [instruction, setInstruction] = useState("");
+  const instructionTextAreaId = useId();
   const bubbleText = lastReply.trim();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== " " || event.repeat || event.altKey || event.ctrlKey || event.metaKey) {
+        return;
+      }
+
+      if (open || pending || isEditableTarget(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      setOpen(true);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, pending]);
 
   const handleSubmit = async () => {
     const normalizedInstruction = instruction.trim();
@@ -93,6 +129,23 @@ export const SmartDataCenterAssistantDock = ({
         okText="发送"
         cancelText="关闭"
         confirmLoading={pending}
+        afterOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            return;
+          }
+
+          window.requestAnimationFrame(() => {
+            const textArea = document.getElementById(instructionTextAreaId) as HTMLTextAreaElement | null;
+
+            if (!textArea) {
+              return;
+            }
+
+            textArea.focus();
+            const cursorPosition = textArea.value.length;
+            textArea.setSelectionRange(cursorPosition, cursorPosition);
+          });
+        }}
         onOk={() => void handleSubmit()}
         onCancel={() => {
           if (!pending) {
@@ -102,10 +155,11 @@ export const SmartDataCenterAssistantDock = ({
       >
         <div className="space-y-4">
           <p className="text-sm leading-6 text-slate-500 dark:text-slate-300">
-            例如：`我想查看一下湿度数据`、`关闭所有湿度数据`、`把湿度卡片放大`
+            例如：`我想查看一下湿度数据`、`打开全部卡片`、`关闭所有卡片`、`缩小全部卡片`、`打开温度、湿度和遥测曲线，并把它们都放大`
           </p>
 
           <TextArea
+            id={instructionTextAreaId}
             value={instruction}
             onChange={(event) => setInstruction(event.target.value)}
             autoSize={{ minRows: 4, maxRows: 8 }}

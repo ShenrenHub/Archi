@@ -138,7 +138,7 @@ export const AppLayout = () => {
 
         {/* macOS Dock */}
         <div className="fixed bottom-4 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[720px] -translate-x-1/2 min-[1124px]:w-auto">
-          <div className="flex items-center gap-1 rounded-[32px] border bg-white/88 px-2 py-2 shadow-[0_12px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/88 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="flex items-center gap-1 rounded-[32px] border bg-white/72 px-2 py-2 shadow-[0_12px_40px_rgba(15,23,42,0.14),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/72 dark:shadow-[0_12px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)]">
             {visibleRoutes
               .filter((item) => item.path !== "/admin")
               .map((item) => {
@@ -150,7 +150,7 @@ export const AppLayout = () => {
                     onClick={() => navigate(item.path)}
                     className={`group relative flex flex-1 flex-col items-center justify-center gap-1.5 rounded-[20px] px-3 py-2.5 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 min-[1124px]:flex-none min-[1124px]:px-5 min-[1124px]:py-3 ${
                       active
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
                         : "text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-white/5"
                     }`}
                     title={item.label}
@@ -161,9 +161,6 @@ export const AppLayout = () => {
                     <span className="max-w-[4rem] text-center text-[10px] font-medium leading-tight min-[1124px]:max-w-[5rem] min-[1124px]:text-xs">
                       {item.label}
                     </span>
-                    {active && (
-                      <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                    )}
                   </button>
                 );
               })}
